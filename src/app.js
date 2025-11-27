@@ -8,7 +8,6 @@ const path = require("path");
 const routes = require("./routes"); 
 const { errorHandler } = require("./utils/errorHandler");
 
-// *** VOCÊ PRECISA CRIAR O APP AQUI ***
 const app = express();
 
 // Middlewares globais
@@ -22,6 +21,7 @@ const allowedOrigins = [
   "https://meatburger.com.py",
   "https://www.meatburger.com.py",
   "http://localhost:5173",
+  "http://localhost:4173",
   "http://localhost:4000",
   process.env.FRONTEND_URL
 ];
@@ -33,6 +33,7 @@ const corsOptions = {
     return callback(new Error("Origin not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
 
