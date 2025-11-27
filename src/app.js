@@ -42,8 +42,17 @@ app.use(cors(corsOptions));
 // Servir uploads
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
-// Rotas
+// Rotas principais
 app.use(routes);
+
+// Rotas de teste para evitar 404 no Render
+app.get("/", (req, res) => {
+  res.send("🔥 Backend MeatBurger funcionando!");
+});
+
+app.get("/doc", (req, res) => {
+  res.send("📄 Documentação MeatBurger (em desenvolvimento)");
+});
 
 // Middleware de erro
 app.use(errorHandler);
