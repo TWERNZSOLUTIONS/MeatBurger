@@ -26,18 +26,12 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ];
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error("Origin not allowed by CORS"));
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
+  credentials: true
+}));
 
 // Servir uploads
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
@@ -45,7 +39,7 @@ app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 // Rotas principais
 app.use(routes);
 
-// Rotas de teste para evitar 404 no Render
+// Rotas de teste para Render / navegador
 app.get("/", (req, res) => {
   res.send("🔥 Backend MeatBurger funcionando!");
 });
