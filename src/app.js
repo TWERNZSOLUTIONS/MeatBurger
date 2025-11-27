@@ -19,9 +19,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Configuração do CORS
 const allowedOrigins = [
+  "https://meatburger.com.py",
+  "https://www.meatburger.com.py",
   "http://localhost:5173",
   "http://localhost:4000",
-  "https://meatburger.com.py",
   process.env.FRONTEND_URL
 ];
 
