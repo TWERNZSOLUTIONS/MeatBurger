@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  email        String?  @unique
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  position  Int       @default(0)
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Product {
+  id            Int            @id @default(autoincrement())
+  name          String
+  description   String?
+  price         Float
+  imageUrl      String?
+  categoryId    Int?
+  category      Category?      @relation(fields: [categoryId], references: [id])
+  position      Int            @default(0)
+  productAddons ProductAddon[]
+  orderItems    OrderItem[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+}
+
+model Addon {
+  id              Int               @id @default(autoincrement())
+  name            String
+  price           Float
+  position        Int               @default(0)
+  productAddons   ProductAddon[]
+  orderItemAddons OrderItemAddon[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+}
+
+model ProductAddon {
+  id          Int     @id @default(autoincrement())
+  productId   Int
+  addonId     Int
+  product     Product @relation(fields: [productId], references: [id])
+  addon       Addon   @relation(fields: [addonId], references: [id])
+  customName  String?
+  customPrice Float?
+  @@unique([productId, addonId])
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  customerName  String?
+  customerPhone String?
+  subtotal      Float
+  discount      Float
+  total         Float
+  couponCode    String?
+  status        OrderStatus @default(NEW)
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  orderItems    OrderItem[]
+  printedAt     DateTime?
+}
+
+model OrderItem {
+  id         Int       @id @default(autoincrement())
+  orderId    Int
+  order      Order     @relation(fields: [orderId], references: [id])
+  productId  Int?
+  product    Product?  @relation(fields: [productId], references: [id])
+  name       String
+  unitPrice  Float
+  quantity   Int       @default(1)
+  totalPrice Float
+  createdAt  DateTime  @default(now())
+  addons     OrderItemAddon[]
+}
+
+model OrderItemAddon {
+  id          Int       @id @default(autoincrement())
+  orderItemId Int
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+  addonId     Int?
+  addon       Addon?    @relation(fields: [addonId], references: [id])
+  name        String
+  price       Float
+}
+
+enum OrderStatus {
+  NEW
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+model Coupon {
+  id         Int      @id @default(autoincrement())
+  code       String   @unique
+  percentage Float
+  startsAt   DateTime
+  endsAt     DateTime
+  active     Boolean  @default(true)
+  usageLimit Int?
+  usedCount  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model LoyaltyProgram {
+  id                 Int     @id @default(autoincrement())
+  requiredPurchases  Int
+  rewardDescription  String
+  active             Boolean @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+// --- NOVO MODELO SIMPLIFICADO ---
+model LoyaltyCard {
+  id       Int     @id @default(autoincrement())
+  name     String
+  phone    String  @unique
+  pedidos  Int     @default(1)
+  meta     Int     @default(5)
+  status   String  @default("Não premiado")
+  lembrete String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Setting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
