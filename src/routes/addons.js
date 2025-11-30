@@ -1,12 +1,17 @@
 const express = require('express');
 const router = express.Router();
+
 const addonsController = require('../controllers/addonsController');
 const auth = require('../middleware/auth');
 
-// PUBLIC
+// ==========================
+// PUBLIC ROUTE
+// ==========================
 router.get('/public', addonsController.getPublicAddons);
 
-// ADMIN
+// ==========================
+// ADMIN ROUTES
+// ==========================
 router.get('/', auth, addonsController.getAddons);
 router.post('/', auth, addonsController.createAddon);
 router.put('/:id', auth, addonsController.updateAddon);

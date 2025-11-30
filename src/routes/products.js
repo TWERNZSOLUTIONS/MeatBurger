@@ -17,10 +17,10 @@ router.get('/public/:id', productsController.getPublicProductById);
 router.get('/', auth, productsController.getProducts);
 router.get('/:id', auth, productsController.getProductById);
 
-// Create product (accepts image)
+// Create product (with image)
 router.post('/', auth, upload.single('image'), productsController.createProduct);
 
-// Update product (accepts image)
+// Update product (with image)
 router.put('/:id', auth, upload.single('image'), productsController.updateProduct);
 
 // Delete product
@@ -29,7 +29,7 @@ router.delete('/:id', auth, productsController.deleteProduct);
 // Reorder products
 router.patch('/reorder', auth, productsController.reorderProducts);
 
-// Move product between categories
+// Move product
 router.post('/:id/move', auth, productsController.moveProduct);
 
 module.exports = router;
