@@ -5,6 +5,10 @@ const productsController = require('../controllers/productsController');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
+// 🔥 IMPORTAR PRISMA PARA A ROTA DE DEBUG FUNCIONAR
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
+
 // ==========================
 // PUBLIC ROUTES
 // ==========================
@@ -32,9 +36,9 @@ router.patch('/reorder', auth, productsController.reorderProducts);
 // Move product
 router.post('/:id/move', auth, productsController.moveProduct);
 
-// ...todas as rotas acima...
-
-// DEBUG — Encontrar produtos sem categoria ou com categoria inválida
+// ==========================
+// DEBUG — Encontrar produtos órfãos
+// ==========================
 router.get("/debug/orphans", async (req, res) => {
   try {
     const orphanProducts = await prisma.product.findMany({
@@ -46,13 +50,15 @@ router.get("/debug/orphans", async (req, res) => {
       }
     });
 
-    res.json(orphanProducts);
+    return res.json({
+      total: orphanProducts.length,
+      items: orphanProducts
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Erro debug orphans:", error);
+    return res.status(500).json({ error: error.message });
   }
 });
 
-// NUNCA DEIXAR ABAIXO DISSO
-module.exports = router;
-
+// NUNCA COLOQUE NADA DEPOIS DISSO
 module.exports = router;
