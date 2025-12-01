@@ -32,4 +32,27 @@ router.patch('/reorder', auth, productsController.reorderProducts);
 // Move product
 router.post('/:id/move', auth, productsController.moveProduct);
 
+// ...todas as rotas acima...
+
+// DEBUG — Encontrar produtos sem categoria ou com categoria inválida
+router.get("/debug/orphans", async (req, res) => {
+  try {
+    const orphanProducts = await prisma.product.findMany({
+      where: {
+        OR: [
+          { categoryId: null },
+          { category: null }
+        ]
+      }
+    });
+
+    res.json(orphanProducts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NUNCA DEIXAR ABAIXO DISSO
+module.exports = router;
+
 module.exports = router;
