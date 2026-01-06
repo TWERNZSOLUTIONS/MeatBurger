@@ -29,9 +29,13 @@ exports.deleteCategory = (id) => {
   });
 };
 
-// === NOVO: mover categoria ===
+// === MOVIMENTAÇÃO CORRIGIDA ===
 exports.moveCategory = async (id, direction) => {
-  const categories = await prisma.category.findMany({ orderBy: { position: 'asc' } });
+  let categories = await prisma.category.findMany({ orderBy: { position: 'asc' } });
+
+  // Normaliza posições 1,2,3...
+  categories = categories.map((c, idx) => ({ ...c, position: idx + 1 }));
+
   const index = categories.findIndex(c => c.id === Number(id));
   if (index === -1) throw new Error('Categoria não encontrada');
 

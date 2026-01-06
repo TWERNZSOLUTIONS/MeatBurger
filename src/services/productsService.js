@@ -32,30 +32,22 @@ exports.createProduct = (data) => {
 exports.updateProduct = async (id, data) => {
   const cleanData = {};
 
-  // Copiar somente dados válidos
   for (const key in data) {
     const value = data[key];
-
     if (value === undefined) continue;
     if (typeof value === "number" && isNaN(value)) continue;
-
     cleanData[key] = value;
   }
 
-  // Se NADA foi enviado, simplesmente retorna o produto sem atualizar
   if (Object.keys(cleanData).length === 0) {
-    return prisma.product.findUnique({
-      where: { id: Number(id) }
-    });
+    return prisma.product.findUnique({ where: { id: Number(id) } });
   }
 
-  // Se há dados válidos, atualiza
   return prisma.product.update({
     where: { id: Number(id) },
     data: cleanData
   });
 };
-
 
 exports.deleteProduct = (id) => {
   return prisma.product.delete({
@@ -63,9 +55,13 @@ exports.deleteProduct = (id) => {
   });
 };
 
-// Mover produto
+// === MOVIMENTAÇÃO CORRIGIDA ===
 exports.moveProduct = async (id, direction) => {
-  const products = await prisma.product.findMany({ orderBy: { position: 'asc' } });
+  let products = await prisma.product.findMany({ orderBy: { position: 'asc' } });
+
+  // Normaliza posições
+  products = products.map((p, idx) => ({ ...p, position: idx + 1 }));
+
   const index = products.findIndex(p => p.id === Number(id));
   if (index === -1) throw new Error('Produto não encontrado');
 
