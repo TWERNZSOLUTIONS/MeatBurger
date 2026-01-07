@@ -78,8 +78,6 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const data = req.body;
-
-    // Apenas campos enviados serão atualizados
     const productData = {};
 
     if (data.name !== undefined) productData.name = data.name;
@@ -88,7 +86,6 @@ exports.updateProduct = async (req, res) => {
     if (data.categoryId !== undefined) productData.categoryId = Number(data.categoryId);
     if (data.position !== undefined) productData.position = Number(data.position);
 
-    // Atualizar imagem caso enviada
     if (req.file) {
       productData.imageUrl = `/uploads/${req.file.filename}`;
     }
@@ -118,7 +115,10 @@ exports.deleteProduct = async (req, res) => {
 
 exports.moveProduct = async (req, res) => {
   try {
-    const updated = await productsService.moveProduct(req.params.id, req.body.direction);
+    const updated = await productsService.moveProduct(
+      req.params.id,
+      req.body.direction
+    );
     res.json(updated);
   } catch (err) {
     console.error(err);

@@ -55,15 +55,24 @@ exports.deleteProduct = (id) => {
   });
 };
 
-// === MOVIMENTAÇÃO CORRIGIDA ===
+// === MOVIMENTAÇÃO CORRETA (POR CATEGORIA) ===
 exports.moveProduct = async (id, direction) => {
-  let products = await prisma.product.findMany({ orderBy: { position: 'asc' } });
+  const product = await prisma.product.findUnique({
+    where: { id: Number(id) }
+  });
 
-  // Normaliza posições
+  if (!product) throw new Error('Produto não encontrado');
+
+  let products = await prisma.product.findMany({
+    where: { categoryId: product.categoryId },
+    orderBy: { position: 'asc' }
+  });
+
+  // Normaliza posições SOMENTE dentro da categoria
   products = products.map((p, idx) => ({ ...p, position: idx + 1 }));
 
   const index = products.findIndex(p => p.id === Number(id));
-  if (index === -1) throw new Error('Produto não encontrado');
+  if (index === -1) return products;
 
   let swapWithIndex = null;
   if (direction === 'up' && index > 0) swapWithIndex = index - 1;
@@ -74,11 +83,20 @@ exports.moveProduct = async (id, direction) => {
   const swapWith = products[swapWithIndex];
 
   await prisma.$transaction([
-    prisma.product.update({ where: { id: current.id }, data: { position: swapWith.position } }),
-    prisma.product.update({ where: { id: swapWith.id }, data: { position: current.position } }),
+    prisma.product.update({
+      where: { id: current.id },
+      data: { position: swapWith.position }
+    }),
+    prisma.product.update({
+      where: { id: swapWith.id },
+      data: { position: current.position }
+    })
   ]);
 
-  return prisma.product.findMany({ orderBy: { position: 'asc' } });
+  return prisma.product.findMany({
+    where: { categoryId: product.categoryId },
+    orderBy: { position: 'asc' }
+  });
 };
 
 exports.reorderProducts = async (order) => {
