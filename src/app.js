@@ -3,13 +3,30 @@ const cors = require("cors");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const path = require("path");
+const fs = require("fs");
 
 const routes = require("./routes");
 const { errorHandler } = require("./utils/errorHandler");
 
 const app = express();
 
-// Helmet ajustado para não bloquear Render
+/**
+ * ===============================
+ * GARANTIR PASTA UPLOADS
+ * ===============================
+ */
+const uploadsPath = path.join(__dirname, "..", "uploads");
+
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  console.log("📁 Pasta uploads criada automaticamente");
+}
+
+/**
+ * ===============================
+ * SEGURANÇA / MIDDLEWARES
+ * ===============================
+ */
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
@@ -21,7 +38,11 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS liberado (Render exige isso)
+/**
+ * ===============================
+ * CORS
+ * ===============================
+ */
 app.use(
   cors({
     origin: "*",
@@ -30,23 +51,38 @@ app.use(
   })
 );
 
-// Servir uploads
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+/**
+ * ===============================
+ * SERVIR IMAGENS
+ * ===============================
+ */
+app.use("/uploads", express.static(uploadsPath));
 
-// Rota raiz (teste backend)
+/**
+ * ===============================
+ * ROTAS BASE
+ * ===============================
+ */
 app.get("/", (req, res) => {
   res.send("🔥 Backend MeatBurger funcionando!");
 });
 
-// Rota /doc (documentação)
 app.get("/doc", (req, res) => {
   res.send("📄 Documentação MeatBurger (em desenvolvimento)");
 });
 
-// Rotas principais
+/**
+ * ===============================
+ * ROTAS DA API
+ * ===============================
+ */
 app.use(routes);
 
-// Middleware de erro
+/**
+ * ===============================
+ * ERROR HANDLER
+ * ===============================
+ */
 app.use(errorHandler);
 
 module.exports = app;
