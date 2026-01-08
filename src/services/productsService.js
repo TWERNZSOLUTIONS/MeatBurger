@@ -1,5 +1,6 @@
 const prisma = require('../prismaClient');
 
+// ================= ADMIN =================
 exports.getProducts = ({ categoryId } = {}) => {
   const where = categoryId ? { categoryId: Number(categoryId) } : {};
   return prisma.product.findMany({
@@ -24,7 +25,8 @@ exports.createProduct = (data) => {
       price: data.price,
       imageUrl: data.imageUrl || "",
       categoryId: data.categoryId,
-      position: data.position ?? 999
+      position: data.position ?? 999,
+      outOfStock: false
     }
   });
 };
@@ -49,13 +51,38 @@ exports.updateProduct = async (id, data) => {
   });
 };
 
+exports.toggleOutOfStock = (id) => {
+  return prisma.product.update({
+    where: { id: Number(id) },
+    data: {
+      outOfStock: {
+        set: undefined
+      }
+    }
+  });
+};
+
 exports.deleteProduct = (id) => {
   return prisma.product.delete({
     where: { id: Number(id) }
   });
 };
 
-// === MOVIMENTAÇÃO CORRETA (POR CATEGORIA) ===
+// ================= CARDÁPIO =================
+exports.getPublicProducts = () => {
+  return prisma.product.findMany({
+    where: {
+      outOfStock: false
+    },
+    orderBy: [
+      { category: { position: 'asc' } },
+      { position: 'asc' }
+    ],
+    include: { category: true }
+  });
+};
+
+// ================= MOVIMENTAÇÃO =================
 exports.moveProduct = async (id, direction) => {
   const product = await prisma.product.findUnique({
     where: { id: Number(id) }
@@ -68,7 +95,6 @@ exports.moveProduct = async (id, direction) => {
     orderBy: { position: 'asc' }
   });
 
-  // Normaliza posições SOMENTE dentro da categoria
   products = products.map((p, idx) => ({ ...p, position: idx + 1 }));
 
   const index = products.findIndex(p => p.id === Number(id));
@@ -97,14 +123,4 @@ exports.moveProduct = async (id, direction) => {
     where: { categoryId: product.categoryId },
     orderBy: { position: 'asc' }
   });
-};
-
-exports.reorderProducts = async (order) => {
-  const updates = order.map(item =>
-    prisma.product.update({
-      where: { id: item.id },
-      data: { position: item.position }
-    })
-  );
-  return prisma.$transaction(updates);
 };
