@@ -1,6 +1,6 @@
 const productsService = require('../services/productsService');
 
-// ========== PÚBLICO ==========
+// ===== PÚBLICO =====
 exports.getPublicProducts = async (req, res) => {
   try {
     const { categoryId } = req.query;
@@ -15,7 +15,9 @@ exports.getPublicProducts = async (req, res) => {
 exports.getPublicProductById = async (req, res) => {
   try {
     const product = await productsService.getProductById(req.params.id);
-    if (!product) return res.status(404).json({ error: 'Produto não encontrado.' });
+    if (!product) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
+    }
     res.json(product);
   } catch (err) {
     console.error(err);
@@ -23,7 +25,7 @@ exports.getPublicProductById = async (req, res) => {
   }
 };
 
-// ========== ADMIN ==========
+// ===== ADMIN =====
 exports.getProducts = async (req, res) => {
   try {
     const { categoryId } = req.query;
@@ -38,7 +40,9 @@ exports.getProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const product = await productsService.getProductById(req.params.id);
-    if (!product) return res.status(404).json({ error: 'Produto não encontrado.' });
+    if (!product) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
+    }
     res.json(product);
   } catch (err) {
     console.error(err);
@@ -51,25 +55,26 @@ exports.createProduct = async (req, res) => {
     const data = req.body;
 
     if (!data.name || !data.price || !data.categoryId) {
-      return res.status(400).json({ error: 'Nome, preço e categoria são obrigatórios.' });
+      return res.status(400).json({
+        error: 'Nome, preço e categoria são obrigatórios.'
+      });
     }
 
     const productData = {
       name: data.name,
-      description: data.description || "",
+      description: data.description || '',
       price: Number(data.price),
       categoryId: Number(data.categoryId),
       position: data.position ? Number(data.position) : 999,
+      imageUrl: ''
     };
 
     if (req.file && req.file.path) {
-      productData.imageUrl = req.file.path;
+      productData.imageUrl = req.file.path; // Cloudinary URL
     }
-
 
     const product = await productsService.createProduct(productData);
     res.json(product);
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao criar produto.' });
@@ -91,17 +96,15 @@ exports.updateProduct = async (req, res) => {
       productData.imageUrl = req.file.path;
     }
 
-
-    const updatedProduct = await productsService.updateProduct(
+    const updated = await productsService.updateProduct(
       Number(req.params.id),
       productData
     );
 
-    res.json(updatedProduct);
-
+    res.json(updated);
   } catch (err) {
-    console.error("Erro no updateProduct:", err);
-    res.status(500).json({ error: "Erro ao atualizar produto." });
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao atualizar produto.' });
   }
 };
 

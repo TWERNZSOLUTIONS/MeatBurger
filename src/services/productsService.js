@@ -1,9 +1,7 @@
 const prisma = require('../prismaClient');
 
-// ================= ADMIN =================
 exports.getProducts = ({ categoryId } = {}) => {
   const where = categoryId ? { categoryId: Number(categoryId) } : {};
-
   return prisma.product.findMany({
     where,
     orderBy: { position: 'asc' },
@@ -22,12 +20,11 @@ exports.createProduct = (data) => {
   return prisma.product.create({
     data: {
       name: data.name,
-      description: data.description || "",
+      description: data.description,
       price: data.price,
-      imageUrl: data.imageUrl || "",
+      imageUrl: data.imageUrl,
       categoryId: data.categoryId,
-      position: data.position ?? 999,
-      outOfStock: false
+      position: data.position
     }
   });
 };
@@ -36,38 +33,18 @@ exports.updateProduct = async (id, data) => {
   const cleanData = {};
 
   for (const key in data) {
-    const value = data[key];
-    if (value === undefined) continue;
-    if (typeof value === "number" && isNaN(value)) continue;
-    cleanData[key] = value;
+    if (data[key] !== undefined) {
+      cleanData[key] = data[key];
+    }
   }
 
   if (Object.keys(cleanData).length === 0) {
-    return prisma.product.findUnique({
-      where: { id: Number(id) },
-      include: { category: true }
-    });
+    return prisma.product.findUnique({ where: { id: Number(id) } });
   }
 
   return prisma.product.update({
     where: { id: Number(id) },
-    data: cleanData,
-    include: { category: true }
-  });
-};
-
-exports.toggleOutOfStock = async (id) => {
-  const product = await prisma.product.findUnique({
-    where: { id: Number(id) }
-  });
-
-  if (!product) throw new Error("Produto não encontrado");
-
-  return prisma.product.update({
-    where: { id: Number(id) },
-    data: {
-      outOfStock: !product.outOfStock
-    }
+    data: cleanData
   });
 };
 
@@ -77,37 +54,7 @@ exports.deleteProduct = (id) => {
   });
 };
 
-// ================= CARDÁPIO =================
-exports.getPublicProducts = ({ categoryId } = {}) => {
-  const where = {
-    outOfStock: false
-  };
-
-  if (categoryId) {
-    where.categoryId = Number(categoryId);
-  }
-
-  return prisma.product.findMany({
-    where,
-    orderBy: [
-      { category: { position: 'asc' } },
-      { position: 'asc' }
-    ],
-    include: { category: true }
-  });
-};
-
-exports.getPublicProductById = (id) => {
-  return prisma.product.findFirst({
-    where: {
-      id: Number(id),
-      outOfStock: false
-    },
-    include: { category: true }
-  });
-};
-
-// ================= MOVIMENTAÇÃO =================
+// === MOVIMENTAÇÃO POR CATEGORIA ===
 exports.moveProduct = async (id, direction) => {
   const product = await prisma.product.findUnique({
     where: { id: Number(id) }
@@ -115,31 +62,33 @@ exports.moveProduct = async (id, direction) => {
 
   if (!product) throw new Error('Produto não encontrado');
 
-  let products = await prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: { categoryId: product.categoryId },
     orderBy: { position: 'asc' }
   });
 
-  products = products.map((p, idx) => ({ ...p, position: idx + 1 }));
-
   const index = products.findIndex(p => p.id === Number(id));
   if (index === -1) return products;
 
-  let swapWithIndex = null;
-  if (direction === 'up' && index > 0) swapWithIndex = index - 1;
-  if (direction === 'down' && index < products.length - 1) swapWithIndex = index + 1;
-  if (swapWithIndex === null) return products;
+  const swapIndex =
+    direction === 'up' ? index - 1 :
+    direction === 'down' ? index + 1 :
+    null;
+
+  if (swapIndex < 0 || swapIndex >= products.length) {
+    return products;
+  }
 
   const current = products[index];
-  const swapWith = products[swapWithIndex];
+  const target = products[swapIndex];
 
   await prisma.$transaction([
     prisma.product.update({
       where: { id: current.id },
-      data: { position: swapWith.position }
+      data: { position: target.position }
     }),
     prisma.product.update({
-      where: { id: swapWith.id },
+      where: { id: target.id },
       data: { position: current.position }
     })
   ]);
@@ -148,4 +97,14 @@ exports.moveProduct = async (id, direction) => {
     where: { categoryId: product.categoryId },
     orderBy: { position: 'asc' }
   });
+};
+
+exports.reorderProducts = async (order) => {
+  const updates = order.map(item =>
+    prisma.product.update({
+      where: { id: item.id },
+      data: { position: item.position }
+    })
+  );
+  return prisma.$transaction(updates);
 };
