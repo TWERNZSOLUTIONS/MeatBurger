@@ -3,6 +3,7 @@ const prisma = require('../prismaClient');
 // ================= ADMIN =================
 exports.getProducts = ({ categoryId } = {}) => {
   const where = categoryId ? { categoryId: Number(categoryId) } : {};
+
   return prisma.product.findMany({
     where,
     orderBy: { position: 'asc' },
@@ -42,22 +43,30 @@ exports.updateProduct = async (id, data) => {
   }
 
   if (Object.keys(cleanData).length === 0) {
-    return prisma.product.findUnique({ where: { id: Number(id) } });
+    return prisma.product.findUnique({
+      where: { id: Number(id) },
+      include: { category: true }
+    });
   }
 
   return prisma.product.update({
     where: { id: Number(id) },
-    data: cleanData
+    data: cleanData,
+    include: { category: true }
   });
 };
 
-exports.toggleOutOfStock = (id) => {
+exports.toggleOutOfStock = async (id) => {
+  const product = await prisma.product.findUnique({
+    where: { id: Number(id) }
+  });
+
+  if (!product) throw new Error("Produto não encontrado");
+
   return prisma.product.update({
     where: { id: Number(id) },
     data: {
-      outOfStock: {
-        set: undefined
-      }
+      outOfStock: !product.outOfStock
     }
   });
 };
@@ -69,15 +78,31 @@ exports.deleteProduct = (id) => {
 };
 
 // ================= CARDÁPIO =================
-exports.getPublicProducts = () => {
+exports.getPublicProducts = ({ categoryId } = {}) => {
+  const where = {
+    outOfStock: false
+  };
+
+  if (categoryId) {
+    where.categoryId = Number(categoryId);
+  }
+
   return prisma.product.findMany({
-    where: {
-      outOfStock: false
-    },
+    where,
     orderBy: [
       { category: { position: 'asc' } },
       { position: 'asc' }
     ],
+    include: { category: true }
+  });
+};
+
+exports.getPublicProductById = (id) => {
+  return prisma.product.findFirst({
+    where: {
+      id: Number(id),
+      outOfStock: false
+    },
     include: { category: true }
   });
 };
