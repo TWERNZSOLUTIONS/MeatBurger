@@ -1,33 +1,37 @@
-const loyaltyService = require('../services/loyaltyService');
+const loyaltyService = require("../services/loyaltyService");
 
-// Listar cartões fidelidade
+// ADMIN
 exports.getCards = async (req, res) => {
   try {
     const cards = await loyaltyService.getCards();
     res.json(cards);
   } catch (err) {
-    console.error(err);
+    console.error("Erro cartões fidelidade:", err);
     res.status(500).json({ error: "Erro ao buscar cartões fidelidade." });
   }
 };
 
-// Registrar pedido do cliente
+// PUBLIC — NUNCA QUEBRA CHECKOUT
 exports.recordPurchase = async (req, res) => {
   try {
     const { name, phone } = req.body;
+
+    // Se não tiver dados mínimos, ignora fidelidade
     if (!name || !phone) {
-      return res.status(400).json({ error: "Nome e telefone são obrigatórios." });
+      return res.json({ success: true, ignored: true });
     }
 
-    const card = await loyaltyService.recordPurchase({ name, phone });
-    res.json(card);
+    await loyaltyService.recordPurchase({ name, phone });
+
+    res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao registrar compra para fidelidade." });
+    // LOGA MAS NÃO QUEBRA
+    console.error("Falha fidelidade (ignorada):", err.message);
+    res.json({ success: true, ignored: true });
   }
 };
 
-// Salvar/editar prêmio e meta
+// ADMIN
 exports.setReward = async (req, res) => {
   try {
     const { reward, rewardTarget } = req.body;
@@ -43,25 +47,12 @@ exports.setReward = async (req, res) => {
   }
 };
 
-// Buscar prêmio/meta atual
 exports.getReward = async (req, res) => {
   try {
     const rewardData = await loyaltyService.getReward();
-    res.json(rewardData);
+    res.json(rewardData || { reward: "", rewardTarget: 0 });
   } catch (err) {
     console.error("Erro ao buscar prêmio:", err);
     res.status(500).json({ error: "Erro ao buscar prêmio." });
   }
 };
-
-// Obter prêmio/meta atual
-exports.getReward = async (req, res) => {
-  try {
-    const setting = await require('../services/loyaltyService').getReward();
-    res.json(setting || { reward: "", rewardTarget: 0 });
-  } catch (err) {
-    console.error("Erro ao buscar prêmio:", err);
-    res.status(500).json({ error: "Erro ao buscar prêmio." });
-  }
-};
-
