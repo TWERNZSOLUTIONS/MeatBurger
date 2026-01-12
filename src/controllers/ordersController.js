@@ -1,84 +1,76 @@
 const ordersService = require('../services/ordersService');
 
+// =======================
+// CRIAR PEDIDO (CLIENTE)
+// =======================
 exports.createOrder = async (req, res) => {
-  const data = req.body || {};
-
   try {
-    // =========================
-    // SANITIZAÇÃO DE ITENS
-    // =========================
-    const orderItems = Array.isArray(data.items)
-      ? data.items.map(item => {
-          const qty = Number(item.qty) > 0 ? Number(item.qty) : 1;
-          const price = Number(item.price) > 0 ? Number(item.price) : 0;
-
-          return {
-            productId: item.productId || null,
-            name: item.name || 'Item sem nome',
-            unitPrice: price,
-            quantity: qty,
-            totalPrice: price * qty,
-
-            addons: Array.isArray(item.addons)
-              ? item.addons.map(add => ({
-                  addonId: add.id || null,
-                  name: add.name || 'Adicional',
-                  price: Number(add.price) || 0
-                }))
-              : []
-          };
-        })
-      : [];
-
-    if (orderItems.length === 0) {
-      return res.status(400).json({
-        error: 'Pedido sem itens'
-      });
-    }
-
-    // =========================
-    // PAYLOAD FINAL
-    // =========================
-    const payload = {
-      customerName: data.customer?.name || null,
-      customerPhone: data.customer?.phone || null,
-      subtotal: Number(data.subtotal) || 0,
-      discount: Number(data.discount) || 0,
-      total: Number(data.total) || 0,
-      couponCode: data.coupon?.code || null,
-      orderItems
-    };
-
-    // =========================
-    // CRIAÇÃO DO PEDIDO (CRÍTICO)
-    // =========================
-    const order = await ordersService.createOrder(payload);
-
-    // RESPONDE IMEDIATAMENTE
-    res.status(201).json(order);
-
-    // =========================
-    // QUALQUER PÓS-PROCESSO
-    // =========================
-    // Se futuramente tiver:
-    // fidelidade, logs, notificações, etc
-    // NUNCA pode quebrar o fluxo
-    try {
-      if (ordersService.afterCreateOrder) {
-        await ordersService.afterCreateOrder(order);
-      }
-    } catch (secondaryError) {
-      console.error(
-        'Erro secundário após criação do pedido:',
-        secondaryError
-      );
-    }
-
+    const order = await ordersService.createOrder(req.body);
+    return res.status(201).json(order);
   } catch (err) {
-    console.error('Erro crítico ao criar pedido:', err);
+    console.error('Erro ao criar pedido:', err);
+    return res.status(500).json({ error: 'Erro ao criar pedido' });
+  }
+};
 
-    return res.status(500).json({
-      error: 'Erro interno ao processar o pedido'
-    });
+// =======================
+// LISTAR PEDIDOS (ADMIN)
+// =======================
+exports.getOrders = async (req, res) => {
+  try {
+    const orders = await ordersService.getOrders();
+    return res.json(orders);
+  } catch (err) {
+    console.error('Erro ao listar pedidos:', err);
+    return res.status(500).json({ error: 'Erro ao listar pedidos' });
+  }
+};
+
+// =======================
+// DETALHE DO PEDIDO
+// =======================
+exports.getOrderById = async (req, res) => {
+  try {
+    const order = await ordersService.getOrderById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
+    return res.json(order);
+  } catch (err) {
+    console.error('Erro ao buscar pedido:', err);
+    return res.status(500).json({ error: 'Erro ao buscar pedido' });
+  }
+};
+
+// =======================
+// ATUALIZAR STATUS
+// =======================
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await ordersService.updateOrderStatus(
+      req.params.id,
+      status
+    );
+    return res.json(order);
+  } catch (err) {
+    console.error('Erro ao atualizar status:', err);
+    return res.status(500).json({ error: 'Erro ao atualizar status' });
+  }
+};
+
+// =======================
+// IMPRIMIR PEDIDO
+// =======================
+exports.printOrder = async (req, res) => {
+  try {
+    const printData = await ordersService.printOrder(req.params.id);
+    if (!printData) {
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
+    return res.json(printData);
+  } catch (err) {
+    console.error('Erro ao imprimir pedido:', err);
+    return res.status(500).json({ error: 'Erro ao imprimir pedido' });
   }
 };
