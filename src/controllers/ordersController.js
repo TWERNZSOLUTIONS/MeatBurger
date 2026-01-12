@@ -1,80 +1,84 @@
 const ordersService = require('../services/ordersService');
 
-// ========== PÚBLICO ==========
 exports.createOrder = async (req, res) => {
+  const data = req.body || {};
+
   try {
-    const data = req.body;
+    // =========================
+    // SANITIZAÇÃO DE ITENS
+    // =========================
+    const orderItems = Array.isArray(data.items)
+      ? data.items.map(item => {
+          const qty = Number(item.qty) > 0 ? Number(item.qty) : 1;
+          const price = Number(item.price) > 0 ? Number(item.price) : 0;
 
-    // unifica addons, drinks e portions
-    const orderItems = (data.items || []).map(item => ({
-      productId: item.productId,
-      name: item.name,
-      unitPrice: item.price,
-      quantity: item.qty,
-      totalPrice: (item.price || 0) * (item.qty || 1),
-      addons: [
-        ...(item.addons || []),
-        ...(item.drinks || []),
-        ...(item.portions || [])
-      ]
-    }));
+          return {
+            productId: item.productId || null,
+            name: item.name || 'Item sem nome',
+            unitPrice: price,
+            quantity: qty,
+            totalPrice: price * qty,
 
+            addons: Array.isArray(item.addons)
+              ? item.addons.map(add => ({
+                  addonId: add.id || null,
+                  name: add.name || 'Adicional',
+                  price: Number(add.price) || 0
+                }))
+              : []
+          };
+        })
+      : [];
+
+    if (orderItems.length === 0) {
+      return res.status(400).json({
+        error: 'Pedido sem itens'
+      });
+    }
+
+    // =========================
+    // PAYLOAD FINAL
+    // =========================
     const payload = {
-      customerName: data.customer?.name,
-      customerPhone: data.customer?.phone,
-      subtotal: data.subtotal,
-      discount: data.discount,
-      total: data.total,
-      couponCode: data.coupon?.code,
+      customerName: data.customer?.name || null,
+      customerPhone: data.customer?.phone || null,
+      subtotal: Number(data.subtotal) || 0,
+      discount: Number(data.discount) || 0,
+      total: Number(data.total) || 0,
+      couponCode: data.coupon?.code || null,
       orderItems
     };
 
-    const result = await ordersService.createOrder(payload);
-    res.json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao criar pedido.' });
-  }
-};
+    // =========================
+    // CRIAÇÃO DO PEDIDO (CRÍTICO)
+    // =========================
+    const order = await ordersService.createOrder(payload);
 
-// ========== ADMIN ==========
-exports.getOrders = async (req, res) => {
-  try {
-    const orders = await ordersService.getOrders();
-    res.json(orders);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao buscar pedidos.' });
-  }
-};
+    // RESPONDE IMEDIATAMENTE
+    res.status(201).json(order);
 
-exports.getOrderById = async (req, res) => {
-  try {
-    const order = await ordersService.getOrderById(req.params.id);
-    if (!order) return res.status(404).json({ error: 'Pedido não encontrado.' });
-    res.json(order);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao buscar pedido.' });
-  }
-};
+    // =========================
+    // QUALQUER PÓS-PROCESSO
+    // =========================
+    // Se futuramente tiver:
+    // fidelidade, logs, notificações, etc
+    // NUNCA pode quebrar o fluxo
+    try {
+      if (ordersService.afterCreateOrder) {
+        await ordersService.afterCreateOrder(order);
+      }
+    } catch (secondaryError) {
+      console.error(
+        'Erro secundário após criação do pedido:',
+        secondaryError
+      );
+    }
 
-exports.updateOrderStatus = async (req, res) => {
-  try {
-    const order = await ordersService.updateOrderStatus(req.params.id, req.body.status);
-    res.json(order);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao atualizar status.' });
-  }
-};
+    console.error('Erro crítico ao criar pedido:', err);
 
-exports.printOrder = async (req, res) => {
-  try {
-    const output = await ordersService.printOrder(req.params.id);
-    res.json({ success: true, output });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao gerar impressão.' });
+    return res.status(500).json({
+      error: 'Erro interno ao processar o pedido'
+    });
   }
 };

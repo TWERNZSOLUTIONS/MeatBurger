@@ -1,111 +1,115 @@
 const prisma = require('../prismaClient');
 
-/**
- * Cria um pedido completo com itens e addons (quando existirem)
- */
+function toNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 exports.createOrder = async (data) => {
-  if (!data.orderItems || !Array.isArray(data.orderItems)) {
-    throw new Error('Itens do pedido inválidos');
+  if (!Array.isArray(data.orderItems) || data.orderItems.length === 0) {
+    throw new Error('Pedido sem itens');
   }
 
-  return prisma.order.create({
-    data: {
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
-      subtotal: data.subtotal,
-      discount: data.discount ?? 0,
-      total: data.total,
-      status: data.status ?? 'NEW',
-      couponCode: data.couponCode || null,
+  // Normalização defensiva
+  const normalizedItems = data.orderItems.map(item => {
+    const quantity = toNumber(item.quantity, 1);
+    const unitPrice = toNumber(item.unitPrice, 0);
+    const totalPrice = unitPrice * quantity;
 
-      orderItems: {
-        create: data.orderItems.map(item => {
-          const baseItem = {
-            productId: item.productId ?? null,
-            name: item.name,
-            unitPrice: item.unitPrice,
-            quantity: item.quantity,
-            totalPrice: item.totalPrice
-          };
-
-          // Só cria addons se existirem
-          if (item.addons && Array.isArray(item.addons) && item.addons.length > 0) {
-            baseItem.addons = {
-              create: item.addons.map(add => ({
-                addonId: add.addonId ?? add.id,
-                name: add.name,
-                price: add.price
-              }))
-            };
-          }
-
-          return baseItem;
-        })
-      }
-    },
-
-    include: {
-      orderItems: {
-        include: {
-          addons: true
-        }
-      }
-    }
+    return {
+      productId: item.productId ?? null,
+      name: item.name || 'Item',
+      unitPrice,
+      quantity,
+      totalPrice,
+      addons: Array.isArray(item.addons)
+        ? item.addons.map(add => ({
+            addonId: add.addonId ?? null,
+            name: add.name || 'Adicional',
+            price: toNumber(add.price, 0)
+          }))
+        : []
+    };
   });
+
+  const subtotal = toNumber(data.subtotal);
+  const discount = toNumber(data.discount);
+  const total = toNumber(data.total);
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const order = await tx.order.create({
+        data: {
+          customerName: data.customerName || null,
+          customerPhone: data.customerPhone || null,
+          subtotal,
+          discount,
+          total,
+          status: 'NEW',
+          couponCode: data.couponCode || null,
+
+          orderItems: {
+            create: normalizedItems.map(item => ({
+              productId: item.productId,
+              name: item.name,
+              unitPrice: item.unitPrice,
+              quantity: item.quantity,
+              totalPrice: item.totalPrice,
+
+              addons: item.addons.length
+                ? {
+                    create: item.addons.map(add => ({
+                      addonId: add.addonId,
+                      name: add.name,
+                      price: add.price
+                    }))
+                  }
+                : undefined
+            }))
+          }
+        },
+        include: {
+          orderItems: {
+            include: { addons: true }
+          }
+        }
+      });
+
+      return order;
+    });
+  } catch (err) {
+    console.error('❌ ERRO REAL AO CRIAR PEDIDO:', err);
+    throw err;
+  }
 };
 
-/**
- * Lista todos os pedidos (admin)
- */
-exports.getOrders = () => {
-  return prisma.order.findMany({
+exports.getOrders = () =>
+  prisma.order.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
-      orderItems: {
-        include: { addons: true }
-      }
+      orderItems: { include: { addons: true } }
     }
   });
-};
 
-/**
- * Busca pedido por ID (admin)
- */
-exports.getOrderById = (id) => {
-  return prisma.order.findUnique({
+exports.getOrderById = (id) =>
+  prisma.order.findUnique({
     where: { id: Number(id) },
     include: {
-      orderItems: {
-        include: { addons: true }
-      }
+      orderItems: { include: { addons: true } }
     }
   });
-};
 
-/**
- * Atualiza status do pedido (admin)
- */
-exports.updateOrderStatus = (id, status) => {
-  return prisma.order.update({
+exports.updateOrderStatus = (id, status) =>
+  prisma.order.update({
     where: { id: Number(id) },
     data: { status }
   });
-};
 
-/**
- * Gera dados simples para impressão
- */
 exports.printOrder = async (id) => {
-  const order = await prisma.order.findUnique({
-    where: { id: Number(id) },
-    include: {
-      orderItems: {
-        include: { addons: true }
-      }
-    }
-  });
+  const order = await exports.getOrderById(id);
+  if (!order) return null;
 
   return {
-    printText: `PEDIDO #${order.id}\nTotal: R$ ${order.total}`
+    printText: `PEDIDO #${order.id}\nTOTAL: R$ ${order.total.toFixed(2)}`
   };
 };
