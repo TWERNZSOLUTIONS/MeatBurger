@@ -5,22 +5,37 @@ async function createOrder(req, res) {
     const data = req.body || {};
 
     const orderItems = Array.isArray(data.items)
-      ? data.items.map(item => ({
-          productId: item.productId ?? null,
-          name: item.name || 'Item',
-          unitPrice: Number(item.price) || 0,
-          quantity: Number(item.qty) > 0 ? Number(item.qty) : 1,
-          totalPrice:
-            (Number(item.price) || 0) *
-            (Number(item.qty) > 0 ? Number(item.qty) : 1),
-          addons: Array.isArray(item.addons)
-            ? item.addons.map(add => ({
-                addonId: add.id ?? null,
-                name: add.name || 'Adicional',
-                price: Number(add.price) || 0,
-              }))
-            : [],
-        }))
+      ? data.items.map(item => {
+          const quantity = Number(item.qty) > 0 ? Number(item.qty) : 1;
+          const unitPrice = Number(item.price) || 0;
+
+          return {
+            productId: item.productId ?? null,
+            name: item.name || 'Item',
+            unitPrice,
+            quantity,
+            totalPrice: unitPrice * quantity,
+
+            addons: Array.isArray(item.addons)
+              ? item.addons.map(add => {
+                  /**
+                   * REGRA DEFINITIVA:
+                   * - Só envia addonId se for Addon real
+                   * - Bebida / Porção (produto) → addonId = null
+                   */
+                  const isRealAddon =
+                    typeof add.id === 'number' &&
+                    add.type !== 'PRODUCT';
+
+                  return {
+                    addonId: isRealAddon ? add.id : null,
+                    name: add.name || 'Adicional',
+                    price: Number(add.price) || 0,
+                  };
+                })
+              : [],
+          };
+        })
       : [];
 
     if (!orderItems.length) {
