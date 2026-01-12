@@ -1,15 +1,21 @@
 const express = require('express');
 const router = express.Router();
+
 const ordersController = require('../controllers/ordersController');
-const auth = require('../middleware/auth');
 
-// --- ROTAS PÚBLICAS (cliente) ---
-router.post('/', ordersController.createOrder); // criar pedido
+// CRIA PEDIDO
+router.post('/', ordersController.createOrder);
 
-// --- ROTAS ADMIN (protegidas) ---
-router.get('/', auth, ordersController.getOrders); // listar todos os pedidos
-router.get('/:id', auth, ordersController.getOrderById); // detalhe de um pedido
-router.patch('/:id/status', auth, ordersController.updateOrderStatus); // atualizar status
-router.get('/:id/print', auth, ordersController.printOrder); // impressão do pedido
+// LISTA PEDIDOS
+router.get('/', ordersController.getOrders);
+
+// BUSCA PEDIDO POR ID
+router.get('/:id', ordersController.getOrderById);
+
+// ATUALIZA STATUS
+router.patch('/:id/status', ordersController.updateOrderStatus);
+
+// IMPRIMIR
+router.get('/:id/print', ordersController.printOrder);
 
 module.exports = router;
