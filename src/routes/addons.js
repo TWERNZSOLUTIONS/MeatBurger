@@ -4,17 +4,17 @@ const router = express.Router();
 const addonsController = require('../controllers/addonsController');
 const auth = require('../middleware/auth');
 
-// ==========================
-// PUBLIC ROUTE
-// ==========================
+// ===== PÚBLICO =====
 router.get('/public', addonsController.getPublicAddons);
 
-// ==========================
-// ADMIN ROUTES
-// ==========================
+// ===== ADMIN =====
 router.get('/', auth, addonsController.getAddons);
 router.post('/', auth, addonsController.createAddon);
 router.put('/:id', auth, addonsController.updateAddon);
+
+// 🔥 ESGOTAR
+router.patch('/:id/stock', auth, addonsController.toggleAddonStock);
+
 router.delete('/:id', auth, addonsController.deleteAddon);
 router.patch('/reorder', auth, addonsController.reorderAddons);
 

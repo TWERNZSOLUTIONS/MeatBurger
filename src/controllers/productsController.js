@@ -4,7 +4,10 @@ const productsService = require('../services/productsService');
 exports.getPublicProducts = async (req, res) => {
   try {
     const { categoryId } = req.query;
-    const products = await productsService.getProducts({ categoryId });
+    const products = await productsService.getProducts({
+      categoryId,
+      publicOnly: true
+    });
     res.json(products);
   } catch (err) {
     console.error(err);
@@ -15,8 +18,8 @@ exports.getPublicProducts = async (req, res) => {
 exports.getPublicProductById = async (req, res) => {
   try {
     const product = await productsService.getProductById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ error: 'Produto não encontrado.' });
+    if (!product || product.outOfStock) {
+      return res.status(404).json({ error: 'Produto não disponível.' });
     }
     res.json(product);
   } catch (err) {
@@ -66,11 +69,12 @@ exports.createProduct = async (req, res) => {
       price: Number(data.price),
       categoryId: Number(data.categoryId),
       position: data.position ? Number(data.position) : 999,
-      imageUrl: ''
+      imageUrl: '',
+      outOfStock: false
     };
 
-    if (req.file && req.file.path) {
-      productData.imageUrl = req.file.path; // Cloudinary URL
+    if (req.file?.path) {
+      productData.imageUrl = req.file.path;
     }
 
     const product = await productsService.createProduct(productData);
@@ -84,15 +88,20 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const data = req.body;
-    const productData = {};
 
-    if (data.name !== undefined) productData.name = data.name;
-    if (data.description !== undefined) productData.description = data.description;
-    if (data.price !== undefined) productData.price = Number(data.price);
-    if (data.categoryId !== undefined) productData.categoryId = Number(data.categoryId);
-    if (data.position !== undefined) productData.position = Number(data.position);
+    const productData = {
+      name: data.name,
+      description: data.description,
+      price: data.price !== undefined ? Number(data.price) : undefined,
+      categoryId: data.categoryId !== undefined ? Number(data.categoryId) : undefined,
+      position: data.position !== undefined ? Number(data.position) : undefined,
+      outOfStock:
+        data.outOfStock !== undefined
+          ? data.outOfStock === true || data.outOfStock === 'true'
+          : undefined
+    };
 
-    if (req.file && req.file.path) {
+    if (req.file?.path) {
       productData.imageUrl = req.file.path;
     }
 
@@ -105,6 +114,17 @@ exports.updateProduct = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao atualizar produto.' });
+  }
+};
+
+// 🔥 ESGOTAR / ATIVAR
+exports.toggleProductStock = async (req, res) => {
+  try {
+    const updated = await productsService.toggleProductStock(req.params.id);
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao alterar estoque do produto.' });
   }
 };
 

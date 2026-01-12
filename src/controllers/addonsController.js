@@ -1,9 +1,9 @@
 const addonsService = require('../services/addonsService');
 
-// ========== PÚBLICO ==========
+// ===== PÚBLICO =====
 exports.getPublicAddons = async (req, res) => {
   try {
-    const addons = await addonsService.getAddons();
+    const addons = await addonsService.getAddons({ publicOnly: true });
     res.json(addons);
   } catch (err) {
     console.error(err);
@@ -11,7 +11,7 @@ exports.getPublicAddons = async (req, res) => {
   }
 };
 
-// ========== ADMIN ==========
+// ===== ADMIN =====
 exports.getAddons = async (req, res) => {
   try {
     const addons = await addonsService.getAddons();
@@ -24,7 +24,13 @@ exports.getAddons = async (req, res) => {
 
 exports.createAddon = async (req, res) => {
   try {
-    const addon = await addonsService.createAddon(req.body);
+    const data = {
+      ...req.body,
+      price: Number(req.body.price),
+      outOfStock: false
+    };
+
+    const addon = await addonsService.createAddon(data);
     res.json(addon);
   } catch (err) {
     console.error(err);
@@ -34,11 +40,32 @@ exports.createAddon = async (req, res) => {
 
 exports.updateAddon = async (req, res) => {
   try {
-    const addon = await addonsService.updateAddon(req.params.id, req.body);
+    const data = {
+      name: req.body.name,
+      price:
+        req.body.price !== undefined ? Number(req.body.price) : undefined,
+      outOfStock:
+        req.body.outOfStock !== undefined
+          ? req.body.outOfStock === true || req.body.outOfStock === 'true'
+          : undefined
+    };
+
+    const addon = await addonsService.updateAddon(req.params.id, data);
     res.json(addon);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao atualizar adicional.' });
+  }
+};
+
+// 🔥 ESGOTAR / ATIVAR
+exports.toggleAddonStock = async (req, res) => {
+  try {
+    const updated = await addonsService.toggleAddonStock(req.params.id);
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao alterar estoque do adicional.' });
   }
 };
 
