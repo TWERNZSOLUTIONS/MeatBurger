@@ -28,50 +28,54 @@ model Category {
 }
 
 model Product {
-  id            Int            @id @default(autoincrement())
-  name          String
-  description   String?
-  price         Float
-  imageUrl      String?
-  categoryId    Int?
-  category      Category?      @relation(fields: [categoryId], references: [id])
-  position      Int            @default(0)
-  outOfStock    Boolean        @default(false)
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  imageUrl    String?
+  categoryId  Int?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  position    Int       @default(0)
+  outOfStock  Boolean   @default(false)
 
   productAddons ProductAddon[]
   flavors       ProductFlavor[]
   orderItems    OrderItem[]
 
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  deletedAt     DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model ProductFlavor {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   productId Int
-  product   Product  @relation(fields: [productId], references: [id])
-  name      String
-  price     Float?
-  position  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  product   Product @relation(fields: [productId], references: [id])
+
+  name     String
+  price    Float?
+  position Int    @default(0)
+
+  orderItems OrderItem[] // 🔥 AJUSTE CRÍTICO (relação inversa)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 }
 
 model Addon {
-  id              Int               @id @default(autoincrement())
-  name            String
-  price           Float
-  position        Int               @default(0)
-  outOfStock      Boolean           @default(false)
+  id         Int     @id @default(autoincrement())
+  name       String
+  price      Float
+  position   Int     @default(0)
+  outOfStock Boolean @default(false)
 
   productAddons   ProductAddon[]
   orderItemAddons OrderItemAddon[]
 
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  deletedAt       DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model ProductAddon {
@@ -82,6 +86,7 @@ model ProductAddon {
   addon       Addon   @relation(fields: [addonId], references: [id])
   customName  String?
   customPrice Float?
+
   @@unique([productId, addonId])
 }
 
@@ -97,34 +102,43 @@ model Order {
   notes         String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-  orderItems    OrderItem[]
   printedAt     DateTime?
+
+  orderItems OrderItem[]
 }
 
 model OrderItem {
-  id            Int       @id @default(autoincrement())
-  orderId       Int
-  order         Order     @relation(fields: [orderId], references: [id])
-  productId     Int?
-  product       Product?  @relation(fields: [productId], references: [id])
-  flavorId      Int?      // novo campo para sabor
-  flavor        ProductFlavor? @relation(fields: [flavorId], references: [id])
-  name          String
-  unitPrice     Float
-  quantity      Int       @default(1)
-  totalPrice    Float
-  createdAt     DateTime  @default(now())
-  addons        OrderItemAddon[]
+  id Int @id @default(autoincrement())
+
+  orderId Int
+  order   Order @relation(fields: [orderId], references: [id])
+
+  productId Int?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  flavorId Int?
+  flavor   ProductFlavor? @relation(fields: [flavorId], references: [id])
+
+  name       String
+  unitPrice  Float
+  quantity   Int    @default(1)
+  totalPrice Float
+
+  addons OrderItemAddon[]
+
+  createdAt DateTime @default(now())
 }
 
 model OrderItemAddon {
   id          Int       @id @default(autoincrement())
   orderItemId Int
   orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
-  addonId     Int?
-  addon       Addon?    @relation(fields: [addonId], references: [id])
-  name        String
-  price       Float
+
+  addonId Int?
+  addon   Addon? @relation(fields: [addonId], references: [id])
+
+  name  String
+  price Float
 }
 
 enum OrderStatus {
@@ -149,22 +163,22 @@ model Coupon {
 }
 
 model LoyaltyProgram {
-  id                 Int     @id @default(autoincrement())
-  requiredPurchases  Int
-  rewardDescription  String
-  active             Boolean @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                Int      @id @default(autoincrement())
+  requiredPurchases Int
+  rewardDescription String
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model LoyaltyCard {
-  id       Int     @id @default(autoincrement())
-  name     String
-  phone    String  @unique
-  pedidos  Int     @default(1)
-  meta     Int     @default(5)
-  status   String  @default("Não premiado")
-  lembrete String?
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String   @unique
+  pedidos   Int      @default(1)
+  meta      Int      @default(5)
+  status    String   @default("Não premiado")
+  lembrete  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
