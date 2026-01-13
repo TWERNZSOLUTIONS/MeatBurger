@@ -15,7 +15,9 @@ exports.getPublicProducts = async (req, res) => {
 exports.getPublicProductById = async (req, res) => {
   try {
     const product = await productsService.getProductById(req.params.id);
-    if (!product || product.outOfStock) return res.status(404).json({ error: 'Produto não disponível.' });
+    if (!product || product.outOfStock) {
+      return res.status(404).json({ error: 'Produto não disponível.' });
+    }
     res.json(product);
   } catch (err) {
     console.error(err);
@@ -49,7 +51,19 @@ exports.getProductById = async (req, res) => {
 exports.createProduct = async (req, res) => {
   try {
     const data = req.body;
-    if (!data.name || !data.price || !data.categoryId) return res.status(400).json({ error: 'Nome, preço e categoria são obrigatórios.' });
+
+    if (!data.name || !data.price || !data.categoryId) {
+      return res.status(400).json({ error: 'Nome, preço e categoria são obrigatórios.' });
+    }
+
+    let flavors = [];
+    if (data.flavors) {
+      try {
+        flavors = JSON.parse(data.flavors);
+      } catch (e) {
+        return res.status(400).json({ error: 'Formato inválido de sabores.' });
+      }
+    }
 
     const productData = {
       name: data.name,
@@ -58,7 +72,8 @@ exports.createProduct = async (req, res) => {
       categoryId: Number(data.categoryId),
       position: data.position ? Number(data.position) : 999,
       imageUrl: req.file?.path || '',
-      outOfStock: false
+      outOfStock: false,
+      flavors
     };
 
     const product = await productsService.createProduct(productData);
@@ -72,17 +87,35 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const data = req.body;
+
+    let flavors;
+    if (data.flavors !== undefined) {
+      try {
+        flavors = JSON.parse(data.flavors);
+      } catch (e) {
+        return res.status(400).json({ error: 'Formato inválido de sabores.' });
+      }
+    }
+
     const productData = {
       name: data.name,
       description: data.description,
       price: data.price !== undefined ? Number(data.price) : undefined,
       categoryId: data.categoryId !== undefined ? Number(data.categoryId) : undefined,
       position: data.position !== undefined ? Number(data.position) : undefined,
-      outOfStock: data.outOfStock !== undefined ? data.outOfStock === true || data.outOfStock === 'true' : undefined,
-      imageUrl: req.file?.path
+      outOfStock:
+        data.outOfStock !== undefined
+          ? data.outOfStock === true || data.outOfStock === 'true'
+          : undefined,
+      imageUrl: req.file?.path,
+      flavors
     };
 
-    const updated = await productsService.updateProduct(Number(req.params.id), productData);
+    const updated = await productsService.updateProduct(
+      Number(req.params.id),
+      productData
+    );
+
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -131,7 +164,7 @@ exports.reorderProducts = async (req, res) => {
   }
 };
 
-// ===== SABORES (NOVO) =====
+// ===== SABORES =====
 exports.getFlavors = async (req, res) => {
   try {
     const flavors = await productsService.getFlavors(req.params.id);
@@ -163,10 +196,12 @@ exports.createFlavor = async (req, res) => {
 exports.updateFlavor = async (req, res) => {
   try {
     const { name, price } = req.body;
+
     const updated = await productsService.updateFlavor(Number(req.params.id), {
       name,
       price: price !== undefined ? Number(price) : undefined
     });
+
     res.json(updated);
   } catch (err) {
     console.error(err);

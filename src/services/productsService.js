@@ -10,11 +10,8 @@ exports.getProducts = ({ categoryId, publicOnly } = {}) => {
     where,
     orderBy: { position: 'asc' },
     include: {
-      category: true,
-      flavors: {
-        where: { deletedAt: null },
-        orderBy: { position: 'asc' }
-      }
+      category: true
+      // 🔥 NÃO carregar flavors aqui (evita timeout)
     }
   });
 };
