@@ -22,7 +22,9 @@ router.patch('/:id/stock', auth, productsController.toggleProductStock);
 router.delete('/:id', auth, productsController.deleteProduct);
 
 router.post('/:id/move', auth, productsController.moveProduct);
-router.patch('/reorder', auth, productsController.reorderProducts);
+
+// ❌ REMOVIDA — handler não existe no controller
+// router.patch('/reorder', auth, productsController.reorderProducts);
 
 // ===== SABORES =====
 router.get('/:id/flavors', auth, productsController.getFlavors);

@@ -58,7 +58,9 @@ exports.createProduct = async (req, res) => {
     const data = req.body;
 
     if (!data.name || !data.price || !data.categoryId) {
-      return res.status(400).json({ error: 'Nome, preço e categoria são obrigatórios.' });
+      return res.status(400).json({
+        error: 'Nome, preço e categoria são obrigatórios.'
+      });
     }
 
     const flavors = data.flavors ? JSON.parse(data.flavors) : [];
@@ -88,22 +90,21 @@ exports.updateProduct = async (req, res) => {
     const flavors =
       data.flavors !== undefined ? JSON.parse(data.flavors) : undefined;
 
-    const product = await productsService.updateProduct(
-      req.params.id,
-      {
-        name: data.name,
-        description: data.description,
-        price: data.price !== undefined ? Number(data.price) : undefined,
-        categoryId: data.categoryId !== undefined ? Number(data.categoryId) : undefined,
-        position: data.position !== undefined ? Number(data.position) : undefined,
-        outOfStock:
-          data.outOfStock !== undefined
-            ? data.outOfStock === true || data.outOfStock === 'true'
-            : undefined,
-        ...(req.file && { imageUrl: req.file.path }),
-        flavors
-      }
-    );
+    const product = await productsService.updateProduct(req.params.id, {
+      name: data.name,
+      description: data.description,
+      price: data.price !== undefined ? Number(data.price) : undefined,
+      categoryId:
+        data.categoryId !== undefined ? Number(data.categoryId) : undefined,
+      position:
+        data.position !== undefined ? Number(data.position) : undefined,
+      outOfStock:
+        data.outOfStock !== undefined
+          ? data.outOfStock === true || data.outOfStock === 'true'
+          : undefined,
+      ...(req.file && { imageUrl: req.file.path }),
+      flavors
+    });
 
     res.json(product);
   } catch (err) {
@@ -159,7 +160,9 @@ exports.getFlavors = async (req, res) => {
 exports.createFlavor = async (req, res) => {
   try {
     const { name, price } = req.body;
-    if (!name) return res.status(400).json({ error: 'Nome obrigatório.' });
+    if (!name) {
+      return res.status(400).json({ error: 'Nome obrigatório.' });
+    }
 
     const flavor = await productsService.createFlavor({
       productId: Number(req.params.id),
