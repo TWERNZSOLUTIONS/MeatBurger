@@ -9,30 +9,58 @@ exports.getProducts = ({ categoryId, publicOnly } = {}) => {
   return prisma.product.findMany({
     where,
     orderBy: { position: 'asc' },
-    include: { category: true }
+    include: {
+      category: true,
+      flavors: {
+        where: { deletedAt: null },
+        orderBy: { position: 'asc' }
+      }
+    }
   });
 };
 
 exports.getProductById = (id) => {
   return prisma.product.findUnique({
     where: { id: Number(id) },
-    include: { category: true }
+    include: {
+      category: true,
+      flavors: {
+        where: { deletedAt: null },
+        orderBy: { position: 'asc' }
+      }
+    }
   });
 };
 
-exports.createProduct = (data) => {
-  return prisma.product.create({ data });
+exports.createProduct = async (data) => {
+  const { flavors, ...rest } = data;
+
+  return prisma.product.create({
+    data: {
+      ...rest,
+      ...(flavors && {
+        flavors: {
+          create: flavors
+        }
+      })
+    }
+  });
 };
 
 exports.updateProduct = async (id, data) => {
-  const cleanData = {};
-  Object.keys(data).forEach(key => {
-    if (data[key] !== undefined) cleanData[key] = data[key];
-  });
+  const { flavors, ...rest } = data;
 
   return prisma.product.update({
     where: { id: Number(id) },
-    data: cleanData
+    data: {
+      ...rest,
+      ...(flavors && {
+        flavors: {
+          deleteMany: {},
+          create: flavors
+        }
+      })
+    }
   });
 };
 
@@ -85,15 +113,4 @@ exports.moveProduct = async (id, direction) => {
     where: { categoryId: product.categoryId },
     orderBy: { position: 'asc' }
   });
-};
-
-exports.reorderProducts = (order) => {
-  return prisma.$transaction(
-    order.map(item =>
-      prisma.product.update({
-        where: { id: item.id },
-        data: { position: item.position }
-      })
-    )
-  );
 };
