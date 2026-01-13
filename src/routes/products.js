@@ -24,4 +24,10 @@ router.delete('/:id', auth, productsController.deleteProduct);
 router.post('/:id/move', auth, productsController.moveProduct);
 router.patch('/reorder', auth, productsController.reorderProducts);
 
+// ===== SABORES =====
+router.get('/:id/flavors', auth, productsController.getFlavors);
+router.post('/:id/flavors', auth, productsController.createFlavor);
+router.put('/flavors/:id', auth, productsController.updateFlavor);
+router.delete('/flavors/:id', auth, productsController.deleteFlavor);
+
 module.exports = router;
