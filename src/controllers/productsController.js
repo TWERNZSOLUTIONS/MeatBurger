@@ -4,7 +4,10 @@ const productsService = require('../services/productsService');
 exports.getPublicProducts = async (req, res) => {
   try {
     const { categoryId } = req.query;
-    const products = await productsService.getProducts({ categoryId, publicOnly: true });
+    const products = await productsService.getProducts({
+      categoryId,
+      publicOnly: true
+    });
     res.json(products);
   } catch (err) {
     console.error(err);
@@ -40,7 +43,9 @@ exports.getProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const product = await productsService.getProductById(req.params.id);
-    if (!product) return res.status(404).json({ error: 'Produto não encontrado.' });
+    if (!product) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
+    }
     res.json(product);
   } catch (err) {
     console.error(err);
@@ -56,16 +61,9 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ error: 'Nome, preço e categoria são obrigatórios.' });
     }
 
-    let flavors = [];
-    if (data.flavors) {
-      try {
-        flavors = JSON.parse(data.flavors);
-      } catch (e) {
-        return res.status(400).json({ error: 'Formato inválido de sabores.' });
-      }
-    }
+    const flavors = data.flavors ? JSON.parse(data.flavors) : [];
 
-    const productData = {
+    const product = await productsService.createProduct({
       name: data.name,
       description: data.description || '',
       price: Number(data.price),
@@ -74,9 +72,8 @@ exports.createProduct = async (req, res) => {
       imageUrl: req.file?.path || '',
       outOfStock: false,
       flavors
-    };
+    });
 
-    const product = await productsService.createProduct(productData);
     res.json(product);
   } catch (err) {
     console.error(err);
@@ -88,56 +85,47 @@ exports.updateProduct = async (req, res) => {
   try {
     const data = req.body;
 
-    let flavors;
-    if (data.flavors !== undefined) {
-      try {
-        flavors = JSON.parse(data.flavors);
-      } catch (e) {
-        return res.status(400).json({ error: 'Formato inválido de sabores.' });
+    const flavors =
+      data.flavors !== undefined ? JSON.parse(data.flavors) : undefined;
+
+    const product = await productsService.updateProduct(
+      req.params.id,
+      {
+        name: data.name,
+        description: data.description,
+        price: data.price !== undefined ? Number(data.price) : undefined,
+        categoryId: data.categoryId !== undefined ? Number(data.categoryId) : undefined,
+        position: data.position !== undefined ? Number(data.position) : undefined,
+        outOfStock:
+          data.outOfStock !== undefined
+            ? data.outOfStock === true || data.outOfStock === 'true'
+            : undefined,
+        ...(req.file && { imageUrl: req.file.path }),
+        flavors
       }
-    }
-
-    const productData = {
-      name: data.name,
-      description: data.description,
-      price: data.price !== undefined ? Number(data.price) : undefined,
-      categoryId: data.categoryId !== undefined ? Number(data.categoryId) : undefined,
-      position: data.position !== undefined ? Number(data.position) : undefined,
-      outOfStock:
-        data.outOfStock !== undefined
-          ? data.outOfStock === true || data.outOfStock === 'true'
-          : undefined,
-      imageUrl: req.file?.path,
-      flavors
-    };
-
-    const updated = await productsService.updateProduct(
-      Number(req.params.id),
-      productData
     );
 
-    res.json(updated);
+    res.json(product);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao atualizar produto.' });
   }
 };
 
-// 🔥 ESGOTAR / ATIVAR
 exports.toggleProductStock = async (req, res) => {
   try {
     const updated = await productsService.toggleProductStock(req.params.id);
     res.json(updated);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro ao alterar estoque do produto.' });
+    res.status(500).json({ error: 'Erro ao alterar estoque.' });
   }
 };
 
 exports.deleteProduct = async (req, res) => {
   try {
     await productsService.deleteProduct(req.params.id);
-    res.json({ message: 'Produto removido com sucesso!' });
+    res.json({ message: 'Produto removido com sucesso.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao remover produto.' });
@@ -146,21 +134,14 @@ exports.deleteProduct = async (req, res) => {
 
 exports.moveProduct = async (req, res) => {
   try {
-    const updated = await productsService.moveProduct(req.params.id, req.body.direction);
+    const updated = await productsService.moveProduct(
+      req.params.id,
+      req.body.direction
+    );
     res.json(updated);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro ao mover produto.' });
-  }
-};
-
-exports.reorderProducts = async (req, res) => {
-  try {
-    const updated = await productsService.reorderProducts(req.body.order);
-    res.json(updated);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao reordenar produtos.' });
+    res.status(500).json({ error: err.message });
   }
 };
 
@@ -195,13 +176,14 @@ exports.createFlavor = async (req, res) => {
 
 exports.updateFlavor = async (req, res) => {
   try {
-    const { name, price } = req.body;
-
-    const updated = await productsService.updateFlavor(Number(req.params.id), {
-      name,
-      price: price !== undefined ? Number(price) : undefined
-    });
-
+    const updated = await productsService.updateFlavor(
+      Number(req.params.id),
+      {
+        name: req.body.name,
+        price:
+          req.body.price !== undefined ? Number(req.body.price) : undefined
+      }
+    );
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -212,7 +194,7 @@ exports.updateFlavor = async (req, res) => {
 exports.deleteFlavor = async (req, res) => {
   try {
     await productsService.deleteFlavor(Number(req.params.id));
-    res.json({ message: 'Sabor removido com sucesso!' });
+    res.json({ message: 'Sabor removido com sucesso.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao remover sabor.' });

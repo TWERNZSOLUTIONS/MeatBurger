@@ -1,5 +1,6 @@
 const prisma = require('../prismaClient');
 
+// ===== PRODUTOS =====
 exports.getProducts = ({ categoryId, publicOnly } = {}) => {
   const where = {
     ...(categoryId && { categoryId: Number(categoryId) }),
@@ -10,8 +11,13 @@ exports.getProducts = ({ categoryId, publicOnly } = {}) => {
     where,
     orderBy: { position: 'asc' },
     include: {
-      category: true
-      // 🔥 NÃO carregar flavors aqui (evita timeout)
+      category: true,
+      flavors: publicOnly
+        ? false
+        : {
+            where: { deletedAt: null },
+            orderBy: { position: 'asc' }
+          }
     }
   });
 };
@@ -35,11 +41,9 @@ exports.createProduct = async (data) => {
   return prisma.product.create({
     data: {
       ...rest,
-      ...(flavors && {
-        flavors: {
-          create: flavors
-        }
-      })
+      flavors: flavors?.length
+        ? { create: flavors }
+        : undefined
     }
   });
 };
@@ -75,13 +79,17 @@ exports.toggleProductStock = async (id) => {
 };
 
 exports.deleteProduct = (id) => {
-  return prisma.product.delete({ where: { id: Number(id) } });
+  return prisma.product.delete({
+    where: { id: Number(id) }
+  });
 };
 
 exports.moveProduct = async (id, direction) => {
   const product = await prisma.product.findUnique({
     where: { id: Number(id) }
   });
+
+  if (!product) throw new Error('Produto não encontrado');
 
   const products = await prisma.product.findMany({
     where: { categoryId: product.categoryId },
@@ -109,5 +117,34 @@ exports.moveProduct = async (id, direction) => {
   return prisma.product.findMany({
     where: { categoryId: product.categoryId },
     orderBy: { position: 'asc' }
+  });
+};
+
+// ===== SABORES =====
+exports.getFlavors = (productId) => {
+  return prisma.flavor.findMany({
+    where: {
+      productId: Number(productId),
+      deletedAt: null
+    },
+    orderBy: { position: 'asc' }
+  });
+};
+
+exports.createFlavor = (data) => {
+  return prisma.flavor.create({ data });
+};
+
+exports.updateFlavor = (id, data) => {
+  return prisma.flavor.update({
+    where: { id },
+    data
+  });
+};
+
+exports.deleteFlavor = (id) => {
+  return prisma.flavor.update({
+    where: { id },
+    data: { deletedAt: new Date() }
   });
 };
