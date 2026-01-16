@@ -101,8 +101,15 @@ exports.updateProduct = async (req, res) => {
   try {
     const data = req.body;
 
-    const flavors =
-      data.flavors !== undefined ? JSON.parse(data.flavors) : undefined;
+    let flavors;
+    if (
+      data.flavors !== undefined &&
+      data.flavors !== '' &&
+      data.flavors !== 'undefined' &&
+      data.flavors !== 'null'
+    ) {
+      flavors = JSON.parse(data.flavors);
+    }
 
     const product = await productsService.updateProduct(req.params.id, {
       name: data.name,
