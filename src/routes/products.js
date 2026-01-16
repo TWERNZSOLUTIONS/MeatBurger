@@ -37,8 +37,16 @@ router.put(
 // ESGOTAR / REATIVAR (AÇÃO)
 // =========================
 
+// Rota original (correta)
 router.patch(
   '/:id/stock',
+  auth,
+  productsController.toggleProductStock
+);
+
+// Rota espelho para compatibilidade com o frontend
+router.patch(
+  '/:id/out-of-stock',
   auth,
   productsController.toggleProductStock
 );
