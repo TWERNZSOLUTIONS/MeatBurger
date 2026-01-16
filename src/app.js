@@ -1,4 +1,4 @@
-const express = require("express");
+const express = require("express"); 
 const cors = require("cors");
 const morgan = require("morgan");
 const helmet = require("helmet");
@@ -69,6 +69,15 @@ app.get("/", (req, res) => {
 
 app.get("/doc", (req, res) => {
   res.send("📄 Documentação MeatBurger (em desenvolvimento)");
+});
+
+/**
+ * ===============================
+ * HEALTH CHECK (KEEP ALIVE)
+ * ===============================
+ */
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
 });
 
 /**

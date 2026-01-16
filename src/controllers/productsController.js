@@ -124,7 +124,7 @@ exports.updateProduct = async (req, res) => {
 };
 
 // =========================
-// ESGOTAR / REATIVAR (CORRETO)
+// ESGOTAR / REATIVAR (AJUSTADO)
 // =========================
 
 exports.toggleProductStock = async (req, res) => {
