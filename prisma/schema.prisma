@@ -74,7 +74,7 @@ model Addon {
   price      Float
   position   Int     @default(0)
 
-  // EXISTE, MAS NÃO TERÁ BOTÃO NO ADMIN (regra vem depois)
+  // CONTROLE DE DISPONIBILIDADE (BOTÃO ESGOTAR)
   outOfStock Boolean @default(false)
 
   productAddons   ProductAddon[]
@@ -83,6 +83,8 @@ model Addon {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  @@index([outOfStock])
 }
 
 model ProductAddon {

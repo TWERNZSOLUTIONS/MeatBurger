@@ -1,239 +1,247 @@
-const prisma = require('../prismaClient');
+const productsService = require('../services/productsService');
 
 // =========================
-// PRODUTOS
+// PÚBLICO
 // =========================
 
-exports.getProducts = async ({ categoryId, publicOnly = false }) => {
-  const where = {};
+exports.getPublicProducts = async (req, res) => {
+  try {
+    const { categoryId } = req.query;
 
-  if (categoryId) {
-    where.categoryId = Number(categoryId);
-  }
-
-  // 🔹 Cardápio público não vê produto esgotado
-  if (publicOnly) {
-    where.outOfStock = false;
-  }
-
-  return prisma.product.findMany({
-    where,
-    include: { flavors: true },
-    orderBy: { position: 'asc' }
-  });
-};
-
-exports.getProductById = async (id) => {
-  return prisma.product.findUnique({
-    where: { id: Number(id) },
-    include: { flavors: true }
-  });
-};
-
-exports.createProduct = async ({
-  name,
-  description,
-  price,
-  categoryId,
-  position,
-  imageUrl,
-  outOfStock = false, // 🔹 padrão garantido
-  flavors = []
-}) => {
-  return prisma.product.create({
-    data: {
-      name,
-      description,
-      price,
+    const products = await productsService.getProducts({
       categoryId,
-      position,
-      imageUrl,
-      outOfStock,
-      flavors: {
-        create: flavors.map(f => ({
-          name: f.name,
-          price: f.price !== undefined ? Number(f.price) : 0
-        }))
-      }
-    },
-    include: { flavors: true }
-  });
-};
-
-exports.updateProduct = async (
-  id,
-  {
-    name,
-    description,
-    price,
-    categoryId,
-    position,
-    imageUrl,
-    outOfStock,
-    flavors
-  }
-) => {
-  // 🔹 Atualiza produto
-  await prisma.product.update({
-    where: { id: Number(id) },
-    data: {
-      name,
-      description,
-      price,
-      categoryId,
-      position,
-      imageUrl,
-      outOfStock
-    }
-  });
-
-  // 🔹 Sincroniza sabores (sem mexer na lógica)
-  if (flavors !== undefined) {
-    const currentFlavors = await prisma.flavor.findMany({
-      where: { productId: Number(id) }
+      publicOnly: true // mantém flag, mas não filtra mais
     });
 
-    for (const f of flavors) {
-      if (f.id) {
-        await prisma.flavor.update({
-          where: { id: Number(f.id) },
-          data: {
-            name: f.name,
-            price: f.price !== undefined ? Number(f.price) : 0
-          }
-        });
-      } else {
-        await prisma.flavor.create({
-          data: {
-            name: f.name,
-            price: f.price !== undefined ? Number(f.price) : 0,
-            productId: Number(id)
-          }
-        });
-      }
+    res.json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar produtos públicos.' });
+  }
+};
+
+exports.getPublicProductById = async (req, res) => {
+  try {
+    const product = await productsService.getProductById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
-    const flavorIds = flavors.filter(f => f.id).map(f => Number(f.id));
-
-    await prisma.flavor.deleteMany({
-      where: {
-        productId: Number(id),
-        id: { notIn: flavorIds }
-      }
-    });
+    // 🔥 AJUSTE:
+    // NÃO bloquear produto esgotado no público
+    res.json(product);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar produto público.' });
   }
+};
 
-  return exports.getProductById(id);
+// =========================
+// ADMIN
+// =========================
+
+exports.getProducts = async (req, res) => {
+  try {
+    const { categoryId } = req.query;
+
+    const products = await productsService.getProducts({ categoryId });
+
+    res.json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar produtos.' });
+  }
+};
+
+exports.getProductById = async (req, res) => {
+  try {
+    const product = await productsService.getProductById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
+    }
+
+    res.json(product);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar produto.' });
+  }
+};
+
+exports.createProduct = async (req, res) => {
+  try {
+    const data = req.body;
+
+    if (!data.name || !data.price || !data.categoryId) {
+      return res.status(400).json({
+        error: 'Nome, preço e categoria são obrigatórios.'
+      });
+    }
+
+    const flavors = data.flavors ? JSON.parse(data.flavors) : [];
+
+    const product = await productsService.createProduct({
+      name: data.name,
+      description: data.description || '',
+      price: Number(data.price),
+      categoryId: Number(data.categoryId),
+      position: data.position ? Number(data.position) : 999,
+      imageUrl: req.file?.path || '',
+      outOfStock: false,
+      flavors
+    });
+
+    res.json(product);
+  } catch (err) {
+    console.error('Erro createProduct:', err);
+    res.status(500).json({ error: 'Erro ao criar produto.' });
+  }
+};
+
+exports.updateProduct = async (req, res) => {
+  try {
+    const data = req.body;
+
+    let flavors;
+    if (
+      data.flavors !== undefined &&
+      data.flavors !== '' &&
+      data.flavors !== 'undefined' &&
+      data.flavors !== 'null'
+    ) {
+      flavors = JSON.parse(data.flavors);
+    }
+
+    const product = await productsService.updateProduct(req.params.id, {
+      name: data.name,
+      description: data.description,
+      price: data.price !== undefined ? Number(data.price) : undefined,
+      categoryId:
+        data.categoryId !== undefined ? Number(data.categoryId) : undefined,
+      position:
+        data.position !== undefined ? Number(data.position) : undefined,
+      ...(req.file && { imageUrl: req.file.path }),
+      flavors
+    });
+
+    res.json(product);
+  } catch (err) {
+    console.error('Erro updateProduct:', err);
+    res.status(500).json({ error: 'Erro ao atualizar produto.' });
+  }
 };
 
 // =========================
 // ESGOTAR / REATIVAR
 // =========================
-exports.toggleProductStock = async (id) => {
-  const product = await prisma.product.findUnique({
-    where: { id: Number(id) },
-    select: { outOfStock: true }
-  });
 
-  if (!product) {
-    throw new Error('Produto não encontrado.');
+exports.toggleProductStock = async (req, res) => {
+  try {
+    const updated = await productsService.toggleProductStock(req.params.id);
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
-
-  return prisma.product.update({
-    where: { id: Number(id) },
-    data: {
-      outOfStock: !product.outOfStock
-    }
-  });
 };
 
-exports.deleteProduct = async (id) => {
-  await prisma.flavor.deleteMany({
-    where: { productId: Number(id) }
-  });
-
-  await prisma.product.delete({
-    where: { id: Number(id) }
-  });
+exports.deleteProduct = async (req, res) => {
+  try {
+    await productsService.deleteProduct(req.params.id);
+    res.json({ message: 'Produto removido com sucesso.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao remover produto.' });
+  }
 };
 
-exports.moveProduct = async (id, direction) => {
-  const product = await prisma.product.findUnique({
-    where: { id: Number(id) }
-  });
+exports.moveProduct = async (req, res) => {
+  try {
+    const updated = await productsService.moveProduct(
+      req.params.id,
+      req.body.direction
+    );
 
-  if (!product) {
-    throw new Error('Produto não encontrado.');
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
-
-  const products = await prisma.product.findMany({
-    where: { categoryId: product.categoryId },
-    orderBy: { position: 'asc' }
-  });
-
-  const idx = products.findIndex(p => p.id === Number(id));
-  if (idx === -1) {
-    throw new Error('Produto não encontrado na lista.');
-  }
-
-  let swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-  if (swapIdx < 0 || swapIdx >= products.length) {
-    return product;
-  }
-
-  const swapProduct = products[swapIdx];
-
-  await prisma.product.update({
-    where: { id: product.id },
-    data: { position: swapProduct.position }
-  });
-
-  await prisma.product.update({
-    where: { id: swapProduct.id },
-    data: { position: product.position }
-  });
-
-  return exports.getProductById(id);
 };
 
 // =========================
 // SABORES (INALTERADO)
 // =========================
 
-exports.getFlavors = async (productId) => {
-  return prisma.flavor.findMany({
-    where: { productId: Number(productId) }
-  });
+exports.getFlavors = async (req, res) => {
+  try {
+    const flavors = await productsService.getFlavors(req.params.id);
+    res.json(flavors);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar sabores.' });
+  }
 };
 
-exports.getFlavorById = async (id) => {
-  return prisma.flavor.findUnique({
-    where: { id: Number(id) }
-  });
-};
+exports.createFlavor = async (req, res) => {
+  try {
+    const { name, price } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nome obrigatório.' });
 
-exports.createFlavor = async ({ productId, name, price }) => {
-  return prisma.flavor.create({
-    data: {
+    const flavor = await productsService.createFlavor({
+      productId: Number(req.params.id),
       name,
-      price: price !== undefined ? Number(price) : 0,
-      productId: Number(productId)
-    }
-  });
+      price: price ? Number(price) : 0
+    });
+
+    res.json(flavor);
+  } catch (err) {
+    console.error('Erro createFlavor:', err);
+    res.status(500).json({ error: 'Erro ao criar sabor.' });
+  }
 };
 
-exports.updateFlavor = async (id, { name, price }) => {
-  return prisma.flavor.update({
-    where: { id: Number(id) },
-    data: {
-      name,
-      price: price !== undefined ? Number(price) : 0
+exports.updateFlavor = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const flavorExists = await productsService.getFlavorById(id);
+    if (!flavorExists) {
+      return res.status(404).json({ error: 'Sabor não encontrado.' });
     }
-  });
+
+    const updated = await productsService.updateFlavor(id, {
+      name: req.body.name,
+      price: req.body.price !== undefined ? Number(req.body.price) : undefined
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error('Erro updateFlavor:', err);
+    res.status(500).json({ error: 'Erro ao atualizar sabor.' });
+  }
 };
 
-exports.deleteFlavor = async (id) => {
-  return prisma.flavor.delete({
-    where: { id: Number(id) }
-  });
+exports.deleteFlavor = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const flavor = await productsService.getFlavorById(id);
+    if (!flavor) {
+      return res.status(404).json({ error: 'Sabor não encontrado.' });
+    }
+
+    await productsService.deleteFlavor(id);
+
+    res.json({ message: 'Sabor removido com sucesso.' });
+  } catch (err) {
+    console.error('Erro deleteFlavor:', err);
+    if (err.code === 'P2003') {
+      return res.status(400).json({
+        error: 'Não é possível remover o sabor: há produtos relacionados.'
+      });
+    }
+    res.status(500).json({ error: 'Erro ao remover sabor.' });
+  }
 };

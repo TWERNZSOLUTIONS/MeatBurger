@@ -13,6 +13,9 @@ exports.getPublicProducts = async (req, res) => {
       publicOnly: true
     });
 
+    // 🔥 AJUSTE:
+    // NÃO filtrar por outOfStock
+    // Produto esgotado continua visível
     res.json(products);
   } catch (err) {
     console.error(err);
@@ -24,8 +27,10 @@ exports.getPublicProductById = async (req, res) => {
   try {
     const product = await productsService.getProductById(req.params.id);
 
-    if (!product || product.outOfStock) {
-      return res.status(404).json({ error: 'Produto não disponível.' });
+    // 🔥 AJUSTE:
+    // Produto pode ser retornado mesmo se estiver esgotado
+    if (!product) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
     res.json(product);
@@ -131,7 +136,7 @@ exports.updateProduct = async (req, res) => {
 };
 
 // =========================
-// ESGOTAR / REATIVAR (AJUSTADO)
+// ESGOTAR / REATIVAR
 // =========================
 
 exports.toggleProductStock = async (req, res) => {
@@ -169,7 +174,7 @@ exports.moveProduct = async (req, res) => {
 };
 
 // =========================
-// SABORES (INALTERADO)
+// SABORES
 // =========================
 
 exports.getFlavors = async (req, res) => {

@@ -1,9 +1,15 @@
 const addonsService = require('../services/addonsService');
 
-// ===== PÚBLICO =====
+// =========================
+// PÚBLICO
+// =========================
+
 exports.getPublicAddons = async (req, res) => {
   try {
-    const addons = await addonsService.getAddons({ publicOnly: true });
+    // 🔥 REGRA:
+    // Retorna TODOS os adicionais
+    // Frontend decide se pode selecionar ou não
+    const addons = await addonsService.getAddons();
     res.json(addons);
   } catch (err) {
     console.error(err);
@@ -11,7 +17,10 @@ exports.getPublicAddons = async (req, res) => {
   }
 };
 
-// ===== ADMIN =====
+// =========================
+// ADMIN
+// =========================
+
 exports.getAddons = async (req, res) => {
   try {
     const addons = await addonsService.getAddons();
@@ -58,7 +67,10 @@ exports.updateAddon = async (req, res) => {
   }
 };
 
-// 🔥 ESGOTAR / ATIVAR
+// =========================
+// ESGOTAR / ATIVAR
+// =========================
+
 exports.toggleAddonStock = async (req, res) => {
   try {
     const updated = await addonsService.toggleAddonStock(req.params.id);

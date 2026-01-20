@@ -1,21 +1,15 @@
-const express = require('express');
-const router = express.Router();
+import { Router } from "express";
+import auth from "../middlewares/auth.js";
+import * as addonsController from "../controllers/addonsController.js";
 
-const addonsController = require('../controllers/addonsController');
-const auth = require('../middleware/auth');
+const router = Router();
 
-// ===== PÚBLICO =====
-router.get('/public', addonsController.getPublicAddons);
+router.get("/", addonsController.getAllAddons);
+router.post("/", auth, addonsController.createAddon);
+router.put("/:id", auth, addonsController.updateAddon);
+router.delete("/:id", auth, addonsController.deleteAddon);
 
-// ===== ADMIN =====
-router.get('/', auth, addonsController.getAddons);
-router.post('/', auth, addonsController.createAddon);
-router.put('/:id', auth, addonsController.updateAddon);
+// ✅ rota de estoque (já existia, mantida)
+router.patch("/:id/stock", auth, addonsController.toggleAddonStock);
 
-// 🔥 ESGOTAR
-router.patch('/:id/stock', auth, addonsController.toggleAddonStock);
-
-router.delete('/:id', auth, addonsController.deleteAddon);
-router.patch('/reorder', auth, addonsController.reorderAddons);
-
-module.exports = router;
+export default router;
