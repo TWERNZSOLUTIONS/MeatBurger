@@ -4,11 +4,10 @@ const addonsService = require('../services/addonsService');
 // PÚBLICO
 // =========================
 
+// 🔥 Retorna TODOS os adicionais
+// Frontend decide se pode selecionar ou não
 exports.getPublicAddons = async (req, res) => {
   try {
-    // 🔥 REGRA:
-    // Retorna TODOS os adicionais
-    // Frontend decide se pode selecionar ou não
     const addons = await addonsService.getAddons();
     res.json(addons);
   } catch (err) {
@@ -21,6 +20,18 @@ exports.getPublicAddons = async (req, res) => {
 // ADMIN
 // =========================
 
+// ✅ Alias para compatibilidade com rotas
+exports.getAllAddons = async (req, res) => {
+  try {
+    const addons = await addonsService.getAddons();
+    res.json(addons);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar adicionais.' });
+  }
+};
+
+// Mantido para uso interno/admin
 exports.getAddons = async (req, res) => {
   try {
     const addons = await addonsService.getAddons();
