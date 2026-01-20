@@ -3,12 +3,9 @@ const addonsService = require('../services/addonsService');
 // =========================
 // PÚBLICO
 // =========================
-
-// 🔥 Retorna TODOS os adicionais
-// Frontend decide se pode selecionar ou não
 exports.getPublicAddons = async (req, res) => {
   try {
-    const addons = await addonsService.getAddons();
+    const addons = await addonsService.getAddons({ publicOnly: true });
     res.json(addons);
   } catch (err) {
     console.error(err);
@@ -19,19 +16,6 @@ exports.getPublicAddons = async (req, res) => {
 // =========================
 // ADMIN
 // =========================
-
-// ✅ Alias para compatibilidade com rotas
-exports.getAllAddons = async (req, res) => {
-  try {
-    const addons = await addonsService.getAddons();
-    res.json(addons);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao buscar adicionais.' });
-  }
-};
-
-// Mantido para uso interno/admin
 exports.getAddons = async (req, res) => {
   try {
     const addons = await addonsService.getAddons();
@@ -44,13 +28,19 @@ exports.getAddons = async (req, res) => {
 
 exports.createAddon = async (req, res) => {
   try {
-    const data = {
-      ...req.body,
-      price: Number(req.body.price),
-      outOfStock: false
-    };
+    const { name, price, categoryId } = req.body;
+    if (!name || !price || !categoryId) {
+      return res.status(400).json({ error: 'Nome, preço e categoria são obrigatórios.' });
+    }
 
-    const addon = await addonsService.createAddon(data);
+    const addon = await addonsService.createAddon({
+      name,
+      price: Number(price),
+      categoryId: Number(categoryId),
+      outOfStock: false,
+      position: req.body.position ? Number(req.body.position) : 999
+    });
+
     res.json(addon);
   } catch (err) {
     console.error(err);
@@ -60,18 +50,17 @@ exports.createAddon = async (req, res) => {
 
 exports.updateAddon = async (req, res) => {
   try {
-    const data = {
-      name: req.body.name,
-      price:
-        req.body.price !== undefined ? Number(req.body.price) : undefined,
-      outOfStock:
-        req.body.outOfStock !== undefined
-          ? req.body.outOfStock === true || req.body.outOfStock === 'true'
-          : undefined
-    };
+    const id = Number(req.params.id);
+    const data = req.body;
 
-    const addon = await addonsService.updateAddon(req.params.id, data);
-    res.json(addon);
+    const updated = await addonsService.updateAddon(id, {
+      name: data.name,
+      price: data.price !== undefined ? Number(data.price) : undefined,
+      categoryId: data.categoryId !== undefined ? Number(data.categoryId) : undefined,
+      position: data.position !== undefined ? Number(data.position) : undefined
+    });
+
+    res.json(updated);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao atualizar adicional.' });
@@ -81,30 +70,38 @@ exports.updateAddon = async (req, res) => {
 // =========================
 // ESGOTAR / ATIVAR
 // =========================
-
 exports.toggleAddonStock = async (req, res) => {
   try {
-    const updated = await addonsService.toggleAddonStock(req.params.id);
+    const id = Number(req.params.id);
+    const updated = await addonsService.toggleAddonStock(id);
     res.json(updated);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro ao alterar estoque do adicional.' });
+    res.status(500).json({ error: err.message });
   }
 };
 
+// =========================
+// DELETAR
+// =========================
 exports.deleteAddon = async (req, res) => {
   try {
-    await addonsService.deleteAddon(req.params.id);
-    res.json({ message: 'Adicional removido com sucesso!' });
+    const id = Number(req.params.id);
+    await addonsService.deleteAddon(id);
+    res.json({ message: 'Adicional removido com sucesso.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao remover adicional.' });
   }
 };
 
+// =========================
+// REORDENAR
+// =========================
 exports.reorderAddons = async (req, res) => {
   try {
-    const updated = await addonsService.reorderAddons(req.body.order);
+    const { order } = req.body; // order = [{id: 1, position: 1}, ...]
+    const updated = await addonsService.reorderAddons(order);
     res.json(updated);
   } catch (err) {
     console.error(err);

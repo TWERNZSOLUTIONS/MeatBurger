@@ -1,24 +1,22 @@
 const express = require('express');
 const router = express.Router();
 
-const auth = require('../middleware/auth');
 const addonsController = require('../controllers/addonsController');
+const auth = require('../middleware/auth');
 
-// =========================
-// PÚBLICO
-// =========================
-router.get('/', addonsController.getPublicAddons);
+// ===== PÚBLICO =====
+router.get('/public', addonsController.getPublicAddons);
 
-// =========================
-// ADMIN
-// =========================
+// ===== ADMIN =====
+router.get('/', auth, addonsController.getAddons);
 router.post('/', auth, addonsController.createAddon);
 router.put('/:id', auth, addonsController.updateAddon);
-router.delete('/:id', auth, addonsController.deleteAddon);
 
-// =========================
-// ESGOTAR / REATIVAR
-// =========================
+// 🔥 ESGOTAR / ATIVAR
 router.patch('/:id/stock', auth, addonsController.toggleAddonStock);
+
+// OUTROS
+router.delete('/:id', auth, addonsController.deleteAddon);
+router.patch('/reorder', auth, addonsController.reorderAddons);
 
 module.exports = router;

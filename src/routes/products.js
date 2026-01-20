@@ -8,14 +8,12 @@ const upload = require('../middleware/upload');
 // =========================
 // PÚBLICO
 // =========================
-
 router.get('/public', productsController.getPublicProducts);
 router.get('/public/:id', productsController.getPublicProductById);
 
 // =========================
 // ADMIN
 // =========================
-
 router.get('/', auth, productsController.getProducts);
 router.get('/:id', auth, productsController.getProductById);
 
@@ -34,17 +32,13 @@ router.put(
 );
 
 // =========================
-// ESGOTAR / REATIVAR (AÇÃO)
+// ESGOTAR / REATIVAR
 // =========================
-
-// Rota original (correta)
 router.patch(
   '/:id/stock',
   auth,
   productsController.toggleProductStock
 );
-
-// Rota espelho para compatibilidade com o frontend
 router.patch(
   '/:id/out-of-stock',
   auth,
@@ -54,14 +48,12 @@ router.patch(
 // =========================
 // OUTROS
 // =========================
-
 router.delete('/:id', auth, productsController.deleteProduct);
 router.post('/:id/move', auth, productsController.moveProduct);
 
 // =========================
 // SABORES
 // =========================
-
 router.get('/:id/flavors', auth, productsController.getFlavors);
 router.post('/:id/flavors', auth, productsController.createFlavor);
 router.put('/flavors/:id', auth, productsController.updateFlavor);
