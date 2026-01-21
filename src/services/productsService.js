@@ -42,12 +42,13 @@ exports.getProductById = async (id) => {
 };
 
 // =========================
-// ESGOTAR / ATIVAR
+// ESGOTAR / ATIVAR (AJUSTE CRÍTICO)
 // =========================
 
 exports.toggleProductStock = async (id) => {
   const product = await prisma.product.findUnique({
     where: { id: Number(id) },
+    select: { outOfStock: true },
   });
 
   if (!product) {
@@ -57,7 +58,7 @@ exports.toggleProductStock = async (id) => {
   return prisma.product.update({
     where: { id: Number(id) },
     data: {
-      outOfStock: !product.outOfStock,
+      outOfStock: product.outOfStock === true ? false : true,
     },
   });
 };
