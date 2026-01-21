@@ -14,7 +14,11 @@ exports.toggleAddonStock = async (id) => {
 exports.createAddon = async (data) => prisma.addon.create({ data });
 exports.updateAddon = async (id, data) => prisma.addon.update({ where: { id: Number(id) }, data });
 exports.deleteAddon = async (id) => prisma.addon.delete({ where: { id: Number(id) } });
+
 exports.reorderAddons = async (order) => {
-  const updates = order.map(o => prisma.addon.update({ where: { id: o.id }, data: { position: o.position } }));
+  const updates = [];
+  for (const { id, position } of order) {
+    updates.push(prisma.addon.update({ where: { id: Number(id) }, data: { position: Number(position) } }));
+  }
   return Promise.all(updates);
 };
