@@ -1,146 +1,62 @@
 const prisma = require('../prismaClient');
 
-// =========================
-// PRODUTOS
-// =========================
-
-exports.getProducts = async ({ categoryId, publicOnly = false }) => {
+exports.getProducts = async ({ categoryId, publicOnly = false } = {}) => {
   const where = {};
-
-  if (categoryId) {
-    where.categoryId = Number(categoryId);
-  }
-
-  /**
-   * ATENÇÃO (decisão correta):
-   * - Produto esgotado NÃO some
-   * - Frontend decide se pode clicar ou não
-   * - Backend apenas entrega o dado
-   */
-  // if (publicOnly) {
-  //   where.outOfStock = false;
-  // }
-
-  return prisma.product.findMany({
-    where,
-    include: {
-      flavors: true,
-    },
-    orderBy: {
-      position: 'asc',
-    },
-  });
+  if (categoryId) where.categoryId = Number(categoryId);
+  if (publicOnly) where.outOfStock = false;
+  return prisma.product.findMany({ where, orderBy: { position: 'asc' } });
 };
 
 exports.getProductById = async (id) => {
-  return prisma.product.findUnique({
-    where: { id: Number(id) },
-    include: {
-      flavors: true,
-    },
-  });
+  return prisma.product.findUnique({ where: { id: Number(id) } });
 };
-
-// =========================
-// ESGOTAR / ATIVAR (AJUSTE CRÍTICO)
-// =========================
-
-exports.toggleProductStock = async (id) => {
-  const product = await prisma.product.findUnique({
-    where: { id: Number(id) },
-    select: { outOfStock: true },
-  });
-
-  if (!product) {
-    throw new Error('Produto não encontrado.');
-  }
-
-  return prisma.product.update({
-    where: { id: Number(id) },
-    data: {
-      outOfStock: product.outOfStock === true ? false : true,
-    },
-  });
-};
-
-// =========================
-// CRUD (mantido para compatibilidade)
-// =========================
 
 exports.createProduct = async (data) => {
-  return prisma.product.create({
-    data,
-  });
+  const { flavors, ...rest } = data;
+  const product = await prisma.product.create({ data: rest });
+  if (flavors?.length) {
+    await Promise.all(flavors.map(f =>
+      prisma.productFlavor.create({ data: { ...f, productId: product.id } })
+    ));
+  }
+  return product;
 };
 
 exports.updateProduct = async (id, data) => {
-  return prisma.product.update({
-    where: { id: Number(id) },
-    data,
-  });
+  const { flavors, ...rest } = data;
+  const product = await prisma.product.update({ where: { id: Number(id) }, data: rest });
+  if (flavors) {
+    await prisma.productFlavor.deleteMany({ where: { productId: product.id } });
+    await Promise.all(flavors.map(f =>
+      prisma.productFlavor.create({ data: { ...f, productId: product.id } })
+    ));
+  }
+  return product;
 };
 
-exports.deleteProduct = async (id) => {
-  return prisma.product.delete({
-    where: { id: Number(id) },
-  });
+exports.toggleProductStock = async (id) => {
+  const product = await prisma.product.findUnique({ where: { id: Number(id) } });
+  if (!product) throw new Error('Produto não encontrado.');
+  return prisma.product.update({ where: { id: Number(id) }, data: { outOfStock: !product.outOfStock } });
 };
 
-// =========================
-// ORDENAÇÃO
-// =========================
+exports.deleteProduct = async (id) => prisma.product.delete({ where: { id: Number(id) } });
 
 exports.moveProduct = async (id, direction) => {
-  const product = await prisma.product.findUnique({
-    where: { id: Number(id) },
+  const product = await prisma.product.findUnique({ where: { id: Number(id) } });
+  if (!product) throw new Error('Produto não encontrado.');
+  const swapProduct = await prisma.product.findFirst({
+    where: { categoryId: product.categoryId, position: direction === 'up' ? { lt: product.position } : { gt: product.position } },
+    orderBy: { position: direction === 'up' ? 'desc' : 'asc' }
   });
-
-  if (!product) {
-    throw new Error('Produto não encontrado.');
-  }
-
-  const offset = direction === 'up' ? -1 : 1;
-
-  return prisma.product.update({
-    where: { id: Number(id) },
-    data: {
-      position: product.position + offset,
-    },
-  });
+  if (!swapProduct) return product;
+  await prisma.product.update({ where: { id: swapProduct.id }, data: { position: product.position } });
+  return prisma.product.update({ where: { id: product.id }, data: { position: swapProduct.position } });
 };
 
-// =========================
-// SABORES
-// =========================
+exports.getFlavors = async (productId) => prisma.productFlavor.findMany({ where: { productId: Number(productId) }, orderBy: { position: 'asc' } });
+exports.getFlavorById = async (id) => prisma.productFlavor.findUnique({ where: { id: Number(id) } });
 
-exports.getFlavors = async (productId) => {
-  return prisma.productFlavor.findMany({
-    where: { productId: Number(productId) },
-    orderBy: { position: 'asc' },
-  });
-};
-
-exports.getFlavorById = async (id) => {
-  return prisma.productFlavor.findUnique({
-    where: { id: Number(id) },
-  });
-};
-
-exports.createFlavor = async (data) => {
-  return prisma.productFlavor.create({
-    data,
-  });
-};
-
-exports.updateFlavor = async (id, data) => {
-  return prisma.productFlavor.update({
-    where: { id: Number(id) },
-    data,
-  });
-};
-
-exports.deleteFlavor = async (id) => {
-  return prisma.productFlavor.delete({
-    where: { id: Number(id) },
-  });
-};
+exports.createFlavor = async (data) => prisma.productFlavor.create({ data });
+exports.updateFlavor = async (id, data) => prisma.productFlavor.update({ where: { id: Number(id) }, data });
+exports.deleteFlavor = async (id) => prisma.productFlavor.delete({ where: { id: Number(id) } });
