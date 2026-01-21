@@ -11,16 +11,6 @@ exports.getProducts = async ({ categoryId, publicOnly = false }) => {
     where.categoryId = Number(categoryId);
   }
 
-  /**
-   * ATENÇÃO (decisão correta):
-   * - Produto esgotado NÃO some
-   * - Frontend decide se pode clicar ou não
-   * - Backend apenas entrega o dado
-   */
-  // if (publicOnly) {
-  //   where.outOfStock = false;
-  // }
-
   return prisma.product.findMany({
     where,
     include: {
@@ -42,35 +32,33 @@ exports.getProductById = async (id) => {
 };
 
 // =========================
-// ESGOTAR / ATIVAR (AJUSTE CRÍTICO)
+// ESGOTAR / ATIVAR (SOLUÇÃO DEFINITIVA)
 // =========================
 
 exports.toggleProductStock = async (id) => {
-  const product = await prisma.product.findUnique({
-    where: { id: Number(id) },
-    select: { outOfStock: true },
-  });
+  const productId = Number(id);
 
-  if (!product) {
+  const updated = await prisma.$executeRawUnsafe(`
+    UPDATE "Product"
+    SET "outOfStock" = NOT "outOfStock"
+    WHERE id = ${productId}
+  `);
+
+  if (updated === 0) {
     throw new Error('Produto não encontrado.');
   }
 
-  return prisma.product.update({
-    where: { id: Number(id) },
-    data: {
-      outOfStock: product.outOfStock === true ? false : true,
-    },
+  return prisma.product.findUnique({
+    where: { id: productId },
   });
 };
 
 // =========================
-// CRUD (mantido para compatibilidade)
+// CRUD
 // =========================
 
 exports.createProduct = async (data) => {
-  return prisma.product.create({
-    data,
-  });
+  return prisma.product.create({ data });
 };
 
 exports.updateProduct = async (id, data) => {
@@ -127,9 +115,7 @@ exports.getFlavorById = async (id) => {
 };
 
 exports.createFlavor = async (data) => {
-  return prisma.productFlavor.create({
-    data,
-  });
+  return prisma.productFlavor.create({ data });
 };
 
 exports.updateFlavor = async (id, data) => {
