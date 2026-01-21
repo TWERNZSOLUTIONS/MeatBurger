@@ -20,7 +20,8 @@ exports.getAddons = async ({ publicOnly = false } = {}) => {
   });
 };
 
-exports.toggleOutOfStock = async (id) => {
+// 🔥 AJUSTE: renomeado para coincidir com o controller
+exports.toggleAddonStock = async (id) => {
   const addon = await prisma.addon.findUnique({
     where: { id: Number(id) },
   });
@@ -31,4 +32,44 @@ exports.toggleOutOfStock = async (id) => {
       outOfStock: !addon.outOfStock,
     },
   });
+};
+
+// =========================
+// CRUD
+// =========================
+exports.createAddon = async (data) => {
+  return prisma.addon.create({
+    data,
+  });
+};
+
+exports.updateAddon = async (id, data) => {
+  return prisma.addon.update({
+    where: { id: Number(id) },
+    data,
+  });
+};
+
+exports.deleteAddon = async (id) => {
+  return prisma.addon.delete({
+    where: { id: Number(id) },
+  });
+};
+
+// =========================
+// REORDENAÇÃO
+// =========================
+exports.reorderAddons = async (order) => {
+  const updates = [];
+
+  for (const { id, position } of order) {
+    updates.push(
+      prisma.addon.update({
+        where: { id: Number(id) },
+        data: { position: Number(position) },
+      })
+    );
+  }
+
+  return Promise.all(updates);
 };

@@ -32,15 +32,10 @@ router.put(
 );
 
 // =========================
-// ESGOTAR / REATIVAR
+// ESGOTAR / ATIVAR (ROTA ÚNICA)
 // =========================
 router.patch(
   '/:id/stock',
-  auth,
-  productsController.toggleProductStock
-);
-router.patch(
-  '/:id/out-of-stock',
   auth,
   productsController.toggleProductStock
 );
