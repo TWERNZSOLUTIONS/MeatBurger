@@ -5,178 +5,141 @@ const prisma = require('../prismaClient');
 // =========================
 
 exports.getProducts = async ({ categoryId, publicOnly = false }) => {
-  const where = {
-    deletedAt: null
-  };
+  const where = {};
 
   if (categoryId) {
     where.categoryId = Number(categoryId);
   }
 
-  if (publicOnly) {
-    where.outOfStock = false;
-  }
+  /**
+   * ATENÇÃO (decisão correta):
+   * - Produto esgotado NÃO some
+   * - Frontend decide se pode clicar ou não
+   * - Backend apenas entrega o dado
+   */
+  // if (publicOnly) {
+  //   where.outOfStock = false;
+  // }
 
   return prisma.product.findMany({
     where,
-    orderBy: { position: 'asc' },
     include: {
-      flavors: {
-        where: { deletedAt: null },
-        orderBy: { position: 'asc' }
-      }
-    }
+      flavors: true,
+    },
+    orderBy: {
+      position: 'asc',
+    },
   });
 };
 
 exports.getProductById = async (id) => {
-  return prisma.product.findFirst({
-    where: {
-      id: Number(id),
-      deletedAt: null
-    },
+  return prisma.product.findUnique({
+    where: { id: Number(id) },
     include: {
-      flavors: {
-        where: { deletedAt: null },
-        orderBy: { position: 'asc' }
-      }
-    }
-  });
-};
-
-exports.createProduct = async (data) => {
-  const { flavors = [], ...productData } = data;
-
-  return prisma.product.create({
-    data: {
-      ...productData,
-      flavors: {
-        create: flavors
-      }
+      flavors: true,
     },
-    include: {
-      flavors: true
-    }
-  });
-};
-
-exports.updateProduct = async (id, data) => {
-  const { flavors, ...productData } = data;
-
-  const productId = Number(id);
-
-  if (flavors) {
-    await prisma.productFlavor.deleteMany({
-      where: { productId }
-    });
-  }
-
-  return prisma.product.update({
-    where: { id: productId },
-    data: {
-      ...productData,
-      ...(flavors && {
-        flavors: {
-          create: flavors
-        }
-      })
-    },
-    include: {
-      flavors: true
-    }
   });
 };
 
 // =========================
-// ESGOTAR / REATIVAR (CORRIGIDO)
+// ESGOTAR / ATIVAR
 // =========================
+
 exports.toggleProductStock = async (id) => {
-  const productId = Number(id);
-
-  if (isNaN(productId)) {
-    throw new Error('ID do produto inválido.');
-  }
-
   const product = await prisma.product.findUnique({
-    where: { id: productId }
+    where: { id: Number(id) },
   });
 
-  if (!product || product.deletedAt) {
+  if (!product) {
     throw new Error('Produto não encontrado.');
   }
 
   return prisma.product.update({
-    where: { id: productId },
+    where: { id: Number(id) },
     data: {
-      outOfStock: !product.outOfStock
-    }
+      outOfStock: !product.outOfStock,
+    },
   });
 };
 
 // =========================
-// OUTROS
+// CRUD (mantido para compatibilidade)
 // =========================
-exports.deleteProduct = async (id) => {
+
+exports.createProduct = async (data) => {
+  return prisma.product.create({
+    data,
+  });
+};
+
+exports.updateProduct = async (id, data) => {
   return prisma.product.update({
     where: { id: Number(id) },
-    data: { deletedAt: new Date() }
+    data,
   });
 };
 
-exports.moveProduct = async (id, direction) => {
-  const productId = Number(id);
+exports.deleteProduct = async (id) => {
+  return prisma.product.delete({
+    where: { id: Number(id) },
+  });
+};
 
+// =========================
+// ORDENAÇÃO
+// =========================
+
+exports.moveProduct = async (id, direction) => {
   const product = await prisma.product.findUnique({
-    where: { id: productId }
+    where: { id: Number(id) },
   });
 
-  if (!product) throw new Error('Produto não encontrado.');
+  if (!product) {
+    throw new Error('Produto não encontrado.');
+  }
 
-  const newPosition =
-    direction === 'up' ? product.position - 1 : product.position + 1;
+  const offset = direction === 'up' ? -1 : 1;
 
   return prisma.product.update({
-    where: { id: productId },
-    data: { position: newPosition }
+    where: { id: Number(id) },
+    data: {
+      position: product.position + offset,
+    },
   });
 };
 
 // =========================
 // SABORES
 // =========================
+
 exports.getFlavors = async (productId) => {
   return prisma.productFlavor.findMany({
-    where: {
-      productId: Number(productId),
-      deletedAt: null
-    },
-    orderBy: { position: 'asc' }
+    where: { productId: Number(productId) },
+    orderBy: { position: 'asc' },
   });
 };
 
 exports.getFlavorById = async (id) => {
-  return prisma.productFlavor.findFirst({
-    where: {
-      id: Number(id),
-      deletedAt: null
-    }
+  return prisma.productFlavor.findUnique({
+    where: { id: Number(id) },
   });
 };
 
 exports.createFlavor = async (data) => {
-  return prisma.productFlavor.create({ data });
+  return prisma.productFlavor.create({
+    data,
+  });
 };
 
 exports.updateFlavor = async (id, data) => {
   return prisma.productFlavor.update({
     where: { id: Number(id) },
-    data
+    data,
   });
 };
 
 exports.deleteFlavor = async (id) => {
-  return prisma.productFlavor.update({
+  return prisma.productFlavor.delete({
     where: { id: Number(id) },
-    data: { deletedAt: new Date() }
   });
 };
