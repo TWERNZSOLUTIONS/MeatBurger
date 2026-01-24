@@ -31,7 +31,8 @@ async function createOrder(data) {
   });
 
   return prisma.$transaction(async tx => {
-    return tx.order.create({
+    // 1️⃣ Cria o pedido novo
+    const order = await tx.order.create({
       data: {
         customerName: data.customerName,
         customerPhone: data.customerPhone,
@@ -40,6 +41,7 @@ async function createOrder(data) {
         total: toNumber(data.total),
         couponCode: data.couponCode,
         status: 'NEW',
+        archived: false,
         orderItems: {
           create: normalizedItems.map(item => ({
             productId: item.productId,
@@ -57,13 +59,54 @@ async function createOrder(data) {
         orderItems: { include: { addons: true } },
       },
     });
+
+    // 2️⃣ Verifica quantos pedidos ativos existem
+    const activeOrders = await tx.order.findMany({
+      where: { archived: false },
+      orderBy: { createdAt: 'asc' }, // mais antigos primeiro
+      select: { id: true },
+    });
+
+    // 3️⃣ Se passar de 50, arquiva os mais antigos
+    if (activeOrders.length > 50) {
+      const excess = activeOrders.length - 50;
+      const toArchive = activeOrders.slice(0, excess);
+
+      await tx.order.updateMany({
+        where: {
+          id: { in: toArchive.map(o => o.id) },
+        },
+        data: { archived: true },
+      });
+    }
+
+    return order;
   });
 }
 
+// 🔥 LISTA PRINCIPAL (ativos)
 const getOrders = () =>
   prisma.order.findMany({
+    where: { archived: false },
     orderBy: { createdAt: 'desc' },
-    include: { orderItems: { include: { addons: true } } },
+    take: 50,
+    include: {
+      orderItems: {
+        include: { addons: true },
+      },
+    },
+  });
+
+// 🗂️ LISTA ARQUIVADOS
+const getArchivedOrders = () =>
+  prisma.order.findMany({
+    where: { archived: true },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      orderItems: {
+        include: { addons: true },
+      },
+    },
   });
 
 const getOrderById = id =>
@@ -90,6 +133,7 @@ const printOrder = async id => {
 module.exports = {
   createOrder,
   getOrders,
+  getArchivedOrders, // 👈 novo
   getOrderById,
   updateOrderStatus,
   printOrder,

@@ -113,6 +113,9 @@ model Order {
   couponCode    String?
   status        OrderStatus @default(NEW)
   notes         String?
+
+  archived      Boolean     @default(false) // 🔥 AJUSTE CRÍTICO
+
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   printedAt     DateTime?

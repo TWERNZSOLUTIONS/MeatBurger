@@ -11,12 +11,11 @@ async function createOrder(req, res) {
 
           return {
             productId: item.productId ?? null,
-            flavorId: item.flavorId ?? null, // NOVO CAMPO
+            flavorId: item.flavorId ?? null,
             name: item.name || 'Item',
             unitPrice,
             quantity,
             totalPrice: unitPrice * quantity,
-
             addons: Array.isArray(item.addons)
               ? item.addons.map(add => {
                   const isRealAddon = typeof add.id === 'number' && add.type !== 'PRODUCT';
@@ -31,7 +30,9 @@ async function createOrder(req, res) {
         })
       : [];
 
-    if (!orderItems.length) return res.status(400).json({ error: 'Pedido sem itens' });
+    if (!orderItems.length) {
+      return res.status(400).json({ error: 'Pedido sem itens' });
+    }
 
     const payload = {
       customerName: data.customer?.name || null,
