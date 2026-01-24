@@ -25,9 +25,24 @@ exports.createCategory = (data) => {
 };
 
 exports.updateCategory = (id, data) => {
+  // 🔒 SANITIZAÇÃO — só o que a Category pode atualizar
+  const updateData = {};
+
+  if (typeof data.name === 'string') {
+    updateData.name = data.name.trim();
+  }
+
+  if (typeof data.position === 'number') {
+    updateData.position = data.position;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw new Error('Nenhum campo válido para atualizar');
+  }
+
   return prisma.category.update({
     where: { id: Number(id) },
-    data
+    data: updateData
   });
 };
 

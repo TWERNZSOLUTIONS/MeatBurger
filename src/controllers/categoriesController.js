@@ -5,7 +5,6 @@ exports.getCategoriesPublic = async (req, res) => {
   try {
     const categories = await categoriesService.getCategories();
 
-    // REMOVE ADICIONAIS DO CARDÁPIO
     const filtered = categories.filter(
       c => c.name.toLowerCase() !== 'adicionais'
     );
@@ -40,11 +39,14 @@ exports.createCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
   try {
-    const category = await categoriesService.updateCategory(req.params.id, req.body);
+    const category = await categoriesService.updateCategory(
+      req.params.id,
+      req.body
+    );
     res.json(category);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao atualizar categoria.' });
+    console.error('ERRO UPDATE CATEGORY:', err);
+    res.status(500).json({ error: err.message || 'Erro ao atualizar categoria.' });
   }
 };
 
