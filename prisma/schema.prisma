@@ -105,6 +105,9 @@ model ProductAddon {
 
 model Order {
   id            Int         @id @default(autoincrement())
+
+  orderNumber   Int         // 🔥 NÚMERO DO PEDIDO (REGRA DO NEGÓCIO)
+
   customerName  String?
   customerPhone String?
   subtotal      Float
@@ -114,13 +117,15 @@ model Order {
   status        OrderStatus @default(NEW)
   notes         String?
 
-  archived      Boolean     @default(false) // 🔥 AJUSTE CRÍTICO
+  archived      Boolean     @default(false)
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   printedAt     DateTime?
 
   orderItems OrderItem[]
+
+  @@index([orderNumber])
 }
 
 model OrderItem {

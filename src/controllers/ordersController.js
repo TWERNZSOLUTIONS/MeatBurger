@@ -18,7 +18,9 @@ async function createOrder(req, res) {
             totalPrice: unitPrice * quantity,
             addons: Array.isArray(item.addons)
               ? item.addons.map(add => {
-                  const isRealAddon = typeof add.id === 'number' && add.type !== 'PRODUCT';
+                  const isRealAddon =
+                    typeof add.id === 'number' && add.type !== 'PRODUCT';
+
                   return {
                     addonId: isRealAddon ? add.id : null,
                     name: add.name || 'Adicional',
@@ -62,10 +64,22 @@ async function getOrders(req, res) {
   }
 }
 
+async function getArchivedOrders(req, res) {
+  try {
+    const orders = await ordersService.getArchivedOrders();
+    return res.json(orders);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erro ao listar histórico' });
+  }
+}
+
 async function getOrderById(req, res) {
   try {
     const order = await ordersService.getOrderById(req.params.id);
-    if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
     return res.json(order);
   } catch (err) {
     console.error(err);
@@ -75,7 +89,10 @@ async function getOrderById(req, res) {
 
 async function updateOrderStatus(req, res) {
   try {
-    const order = await ordersService.updateOrderStatus(req.params.id, req.body.status);
+    const order = await ordersService.updateOrderStatus(
+      req.params.id,
+      req.body.status
+    );
     return res.json(order);
   } catch (err) {
     console.error(err);
@@ -83,10 +100,23 @@ async function updateOrderStatus(req, res) {
   }
 }
 
+// 🔥 DELETE
+async function deleteOrder(req, res) {
+  try {
+    await ordersService.deleteOrder(req.params.id);
+    return res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erro ao excluir pedido' });
+  }
+}
+
 async function printOrder(req, res) {
   try {
     const result = await ordersService.printOrder(req.params.id);
-    if (!result) return res.status(404).json({ error: 'Pedido não encontrado' });
+    if (!result) {
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
     return res.json(result);
   } catch (err) {
     console.error(err);
@@ -97,7 +127,9 @@ async function printOrder(req, res) {
 module.exports = {
   createOrder,
   getOrders,
+  getArchivedOrders,
   getOrderById,
   updateOrderStatus,
+  deleteOrder,
   printOrder,
 };

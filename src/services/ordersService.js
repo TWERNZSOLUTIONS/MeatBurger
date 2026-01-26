@@ -31,9 +31,17 @@ async function createOrder(data) {
   });
 
   return prisma.$transaction(async tx => {
-    // 1️⃣ Cria o pedido novo
+    const lastOrder = await tx.order.findFirst({
+      where: { archived: false },
+      orderBy: { orderNumber: 'desc' },
+      select: { orderNumber: true },
+    });
+
+    const nextOrderNumber = lastOrder ? lastOrder.orderNumber + 1 : 1;
+
     const order = await tx.order.create({
       data: {
+        orderNumber: nextOrderNumber,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         subtotal: toNumber(data.subtotal),
@@ -60,22 +68,17 @@ async function createOrder(data) {
       },
     });
 
-    // 2️⃣ Verifica quantos pedidos ativos existem
     const activeOrders = await tx.order.findMany({
       where: { archived: false },
-      orderBy: { createdAt: 'asc' }, // mais antigos primeiro
+      orderBy: { orderNumber: 'desc' },
       select: { id: true },
     });
 
-    // 3️⃣ Se passar de 50, arquiva os mais antigos
-    if (activeOrders.length > 50) {
-      const excess = activeOrders.length - 50;
-      const toArchive = activeOrders.slice(0, excess);
+    if (activeOrders.length > 20) {
+      const toArchive = activeOrders.slice(20);
 
       await tx.order.updateMany({
-        where: {
-          id: { in: toArchive.map(o => o.id) },
-        },
+        where: { id: { in: toArchive.map(o => o.id) } },
         data: { archived: true },
       });
     }
@@ -84,28 +87,43 @@ async function createOrder(data) {
   });
 }
 
-// 🔥 LISTA PRINCIPAL (ativos)
+// 🔥 DELETE COMPLETO (ORDEM CORRETA)
+async function deleteOrder(id) {
+  return prisma.$transaction(async tx => {
+    await tx.orderItemAddon.deleteMany({
+      where: { orderItem: { orderId: Number(id) } },
+    });
+
+    await tx.orderItem.deleteMany({
+      where: { orderId: Number(id) },
+    });
+
+    await tx.order.delete({
+      where: { id: Number(id) },
+    });
+  });
+}
+
+// ========================
+// LISTAGEM
+// ========================
+
 const getOrders = () =>
   prisma.order.findMany({
     where: { archived: false },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
+    orderBy: { orderNumber: 'desc' },
+    take: 20,
     include: {
-      orderItems: {
-        include: { addons: true },
-      },
+      orderItems: { include: { addons: true } },
     },
   });
 
-// 🗂️ LISTA ARQUIVADOS
 const getArchivedOrders = () =>
   prisma.order.findMany({
     where: { archived: true },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { orderNumber: 'desc' },
     include: {
-      orderItems: {
-        include: { addons: true },
-      },
+      orderItems: { include: { addons: true } },
     },
   });
 
@@ -126,14 +144,15 @@ const printOrder = async id => {
   if (!order) return null;
 
   return {
-    printText: `PEDIDO #${order.id}\nTOTAL: R$ ${order.total.toFixed(2)}`,
+    printText: `PEDIDO #${order.orderNumber}\nTOTAL: R$ ${order.total.toFixed(2)}`,
   };
 };
 
 module.exports = {
   createOrder,
+  deleteOrder,
   getOrders,
-  getArchivedOrders, // 👈 novo
+  getArchivedOrders,
   getOrderById,
   updateOrderStatus,
   printOrder,
